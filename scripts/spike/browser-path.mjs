@@ -26,3 +26,12 @@ export const BROWSER_ARGS = [
   '--no-first-run',
   '--mute-audio',
 ];
+
+// Termux preloads libtermux-exec.so. Chromium re-executes itself via /proc/self/exe for its
+// child processes, and Android's linker refuses that preload there ("CANNOT LINK EXECUTABLE").
+// So Chromium must run without LD_PRELOAD.
+export function browserEnv() {
+  const env = { ...process.env };
+  delete env.LD_PRELOAD;
+  return env;
+}

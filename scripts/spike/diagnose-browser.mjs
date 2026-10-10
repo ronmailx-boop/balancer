@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import { spawnSync } from 'node:child_process';
 import puppeteer from 'puppeteer-core';
-import { findChromium, BROWSER_ARGS } from './browser-path.mjs';
+import { findChromium, BROWSER_ARGS, browserEnv } from './browser-path.mjs';
 
 const exe = findChromium();
 const osRelease = fs.existsSync('/etc/os-release')
@@ -13,7 +13,8 @@ const osRelease = fs.existsSync('/etc/os-release')
   : 'unknown';
 console.log(`node ${process.version} ${os.arch()} | os: ${osRelease} | kernel ${os.release()}`);
 console.log(`chromium: ${exe}`);
-const ver = spawnSync(exe, ['--version'], { encoding: 'utf8' });
+const ver = spawnSync(exe, ['--version'], { encoding: 'utf8', env: browserEnv() });
+console.log(`LD_PRELOAD in this shell: ${process.env.LD_PRELOAD ? 'set (removed for Chromium)' : 'not set'}`);
 console.log(`version: ${(ver.stdout || ver.stderr || String(ver.error)).trim()}`);
 
 // 1) Chromium alone, no Puppeteer, with a few flag variants
@@ -23,7 +24,7 @@ const DIRECT = {
 };
 for (const [name, extra] of Object.entries(DIRECT)) {
   const direct = spawnSync(exe, [...BROWSER_ARGS, '--headless', ...extra, '--dump-dom', 'data:text/html,<p>ok</p>'],
-    { encoding: 'utf8', timeout: 60000 });
+    { encoding: 'utf8', timeout: 60000, env: browserEnv() });
   const ok = (direct.stdout || '').includes('<p>ok</p>');
   console.log(`\n[direct ${name}] ${ok ? 'OK' : 'FAIL'} exit=${direct.status} signal=${direct.signal}`);
   if (!ok) console.log(crashLines(direct.stderr));
@@ -41,7 +42,7 @@ for (const [name, args] of Object.entries(SETS)) {
   let browser;
   try {
     browser = await puppeteer.launch({
-      executablePath: exe, headless: true, args, pipe: name === 'pipe',
+      executablePath: exe, headless: true, args, pipe: name === 'pipe', env: browserEnv(),
       dumpio: false, timeout: 60000, protocolTimeout: 60000,
     });
     browser.process()?.stderr?.on('data', d => { stderr += d; });
@@ -58,7 +59,7 @@ for (const [name, args] of Object.entries(SETS)) {
 
 // The lines that explain a crash; dbus/netlink/udev errors are harmless noise under proot
 function crashLines(s = '') {
-  const lines = s.split('\n').filter(l => l.trim() && !/dbus|NETLINK|udev|Fontconfig/.test(l));
+  const lines = [...new Set(s.split('\n'))].filter(l => l.trim() && !/dbus|NETLINK|udev|Fontconfig/.test(l));
   const fatal = lines.filter(l => /FATAL|Check failed|Trace|SIGTRAP|signal|seccomp|sandbox|Operation not permitted|cannot|error while loading/i.test(l));
   return (fatal.length ? fatal : lines.slice(-6)).slice(0, 10).map(l => '    ' + l.slice(0, 220)).join('\n') || '    (no stderr)';
 }

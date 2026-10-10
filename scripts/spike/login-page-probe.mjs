@@ -3,7 +3,7 @@
 // Usage: node login-page-probe.mjs leumi|max|visaCal|discount|<https url>
 import puppeteer from 'puppeteer-core';
 import { SCRAPERS } from 'israeli-bank-scrapers-core';
-import { findChromium, BROWSER_ARGS } from './browser-path.mjs';
+import { findChromium, BROWSER_ARGS, browserEnv } from './browser-path.mjs';
 
 // Login URLs as used inside israeli-bank-scrapers 6.12.x
 const LOGIN_URLS = {
@@ -21,7 +21,7 @@ if (!/^https:\/\//.test(url)) {
 }
 if (SCRAPERS[arg]) console.log(`${SCRAPERS[arg].name} needs fields: ${SCRAPERS[arg].loginFields.join(', ')}`);
 
-const browser = await puppeteer.launch({ executablePath: findChromium(), headless: true, args: BROWSER_ARGS })
+const browser = await puppeteer.launch({ executablePath: findChromium(), headless: true, args: BROWSER_ARGS, env: browserEnv() })
   .catch(e => { console.error('RESULT: FAIL - browser did not start:', e.message.split('\n')[0]); process.exit(1); });
 try {
   const page = await browser.newPage();

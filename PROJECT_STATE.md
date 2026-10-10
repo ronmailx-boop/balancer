@@ -5,7 +5,7 @@ Phase 1 (foundations) is built and tested in the cloud: 34 tests pass, and the s
 Phase 1 runs on the phone (setup screen in Chrome).
 OPEN BLOCKER from Phase 0: Debian Chromium crashes on the phone even without Puppeteer (`--dump-dom` → SIGTRAP; dbus/netlink errors are noise). The real crash line was not visible yet.
 Next steps:
-1. Ron runs `cd ~/balancer && git pull && bash scripts/spike/diagnose-native.sh` (path B: Termux-native Chromium) and sends the result.
+1. Path B (Termux-native Chromium) first run: Chromium child processes failed with "CANNOT LINK EXECUTABLE /proc/self/exe ... libtermux-exec.so" — Termux LD_PRELOAD. Fixed by launching Chromium without LD_PRELOAD (browserEnv() in scripts/spike/browser-path.mjs). Ron re-runs diagnose-native.sh.
 2. If B fails: `bash scripts/spike/diagnose.sh` again; the new output shows only the crash lines.
 3. Phase 2 (UI shell in Demo Mode) can start in parallel; the browser blocker must be solved before Phase 3 (UI shell in Demo Mode). The browser blocker must be solved before Phase 3.
 
