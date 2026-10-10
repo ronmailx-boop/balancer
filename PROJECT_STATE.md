@@ -14,6 +14,9 @@ After that the planned phases are complete; further work is by Ron's requests.
 - Removing LD_PRELOAD was wrong: the wrapper then exits with 126. Keep LD_PRELOAD.
 - Always hide "HeadlessChrome" in the User-Agent (the library does it; Cal's WAF rejects it).
 
+## Launcher
+- The apps launcher (repo my-site, https://apps.vplusstudio.app/) has a balancer tile that opens http://127.0.0.1:8765/#/home (my-site PR #46, Ron confirmed it works). The tile's icon is a copy of app/icon-512.png kept in my-site (icons/balancer-512.png); if the icon changes, update it there too.
+
 ## Ron's answers (2026-10-10)
 - Device: Samsung Galaxy S25 FE, Android 16 → phantom-process fix: the Developer options toggle was not found on his Samsung; run checks first, fall back to adb-over-wireless-debugging from Termux if Chromium gets killed (signal 9).
 - First institutions: Bank Leumi (bank), Visa Cal + Max (cards).
