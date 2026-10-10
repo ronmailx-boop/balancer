@@ -1,11 +1,32 @@
 import { api, session, messageFor } from '../api.js';
 import { h, card, cardTitle, toast } from '../ui.js';
+import { openBalancePicker } from './prefs.js';
 
 export const title = 'הגדרות';
 export const back = 'more';
 
 export async function render(ctx) {
-  const info = await api('info');
+  const [info, prefs] = await Promise.all([api('info'), api('prefs')]);
+
+  const cycle = h('select', { id: 'cycle-day' }, Array.from({ length: 28 }, (_, i) => i + 1)
+    .map(d => h('option', { value: d, selected: d === prefs.cycleDay }, d === 1 ? '1 בחודש (חודש קלנדרי)' : `${d} בחודש`)));
+  cycle.addEventListener('change', async () => {
+    cycle.disabled = true;
+    try {
+      const r = await api('prefs', { method: 'POST', body: { cycleDay: Number(cycle.value) } });
+      ctx.setCycleDay(r.cycleDay);
+      toast(r.cycleDay === 1 ? 'החודש מתחיל ב-1 לחודש' : `החודש מתחיל ב-${r.cycleDay} ומסתיים ב-${r.cycleDay - 1} בחודש הבא`);
+    } catch (err) {
+      cycle.value = String(prefs.cycleDay);
+      toast(messageFor(err));
+    } finally {
+      cycle.disabled = false;
+    }
+  });
+  const balanceSummary = () => {
+    const inc = prefs.bankAccounts.filter(a => a.included).length;
+    return prefs.bankAccounts.length ? `${inc} מתוך ${prefs.bankAccounts.length} חשבונות בנק` : 'אין עדיין חשבונות בנק';
+  };
 
   const demo = h('input', { type: 'checkbox', id: 'demo-toggle', role: 'switch', checked: info.demo });
   demo.addEventListener('change', async () => {
@@ -70,6 +91,12 @@ export async function render(ctx) {
   });
 
   return [
+    card(cardTitle('חודש התקציב'),
+      h('label', { for: 'cycle-day' }, 'החודש מתחיל ב-'), cycle,
+      h('p', { class: 'muted small' }, 'כל הסיכומים, התקציב, המגמות וההתראות יחושבו לפי התאריך הזה. למשל 10: מה-10 בחודש עד ה-9 בחודש הבא.')),
+    card(cardTitle('יתרה בעו"ש'),
+      h('p', { class: 'muted' }, `מחושבת לפי ${balanceSummary()}.`),
+      prefs.bankAccounts.length > 0 && h('button', { type: 'button', class: 'btn', onclick: () => openBalancePicker(() => ctx.refresh({ keepScroll: true })) }, 'בחירת חשבונות')),
     card(cardTitle('מצב הדגמה'),
       h('label', { class: 'switch-row', for: 'demo-toggle' },
         h('span', {}, h('span', {}, 'הצגת נתונים לדוגמה'), h('span', { class: 'muted small' }, 'נתונים מומצאים בלבד. לא נשמרים ולא מתערבבים עם הנתונים האמיתיים.')),

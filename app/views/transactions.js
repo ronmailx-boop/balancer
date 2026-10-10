@@ -65,7 +65,7 @@ export async function render(ctx) {
   ];
 }
 
-function txRow(t, onclick) {
+export function txRow(t, onclick) {
   return h('li', {},
     h('button', { type: 'button', class: `tx-row ${t.excluded ? 'excluded' : ''}`, onclick },
       h('span', { class: 'tx-icon', 'aria-hidden': 'true' }, t.categoryIcon || '❔'),
@@ -80,7 +80,7 @@ function txRow(t, onclick) {
       h('span', { class: `tx-amount ${t.amount > 0 ? 'pos' : ''}` }, money(t.amount, { decimals: true, sign: t.amount > 0 }))));
 }
 
-function openDetail(ctx, t, cats) {
+export function openDetail(ctx, t, cats) {
   let selected = t.categoryId;
   const catGrid = h('div', { class: 'cat-grid', role: 'radiogroup', 'aria-label': 'קטגוריה' },
     cats.filter(c => c.type !== 'ignore').map(c => {

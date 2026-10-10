@@ -94,6 +94,10 @@ export function generateDemo(db, { today = new Date() } = {}) {
     const daysAgo = (t0 - date) / 86400000;
     const isCard = account !== 'demo-leumi';
     const finalType = isCard && daysAgo < 3 && type === 'normal' ? 'pending' : type;
+    // Posted card purchases carry the bill date they are charged on (the card's charge day next month)
+    if (isCard && !processed && finalType === 'normal') {
+      processed = dateOf(date.getFullYear(), date.getMonth() + 1, ACCOUNTS.find(a => a.id === account).chargeDay);
+    }
     tx.run([`demo-${++seq}`, account, iso, processed ? isoDate(processed) : null, description, money(original), currency,
       money(amount), finalType, number, total, category, recurring, memo]);
     if (isCard) {

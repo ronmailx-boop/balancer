@@ -1,6 +1,6 @@
 // App shell: header with month picker, demo banner, bottom navigation, hash router,
 // month swipe and pull-to-refresh.
-import { h, monthLabel, shiftMonth, skeleton, errorState, toast } from './ui.js';
+import { h, monthLabel, shiftMonth, skeleton, errorState, toast, cycleMonth, cycleRange, todayLocal } from './ui.js';
 import { api, messageFor } from './api.js';
 import * as home from './views/home.js';
 import * as month from './views/month.js';
@@ -22,15 +22,13 @@ const NAV = [
 ];
 const NAV_PARENT = { trends: 'more', recurring: 'more', accounts: 'more', settings: 'more' };
 
-const nowMonth = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-};
-
 export function startShell({ root, onLocked, lock }) {
+  let cycleDay = 1; // the day a budget month starts (Settings), loaded below
+  const nowMonth = () => cycleMonth(todayLocal(), cycleDay);
   let currentMonth = nowMonth();
   let demo = false;
   let renderSeq = 0;
+  let lastRoute = null;
 
   // Note: ‹ and › are mirrored in RTL text, so '‹' renders pointing right
   const title = h('h1', { class: 'top-title' });
@@ -70,6 +68,11 @@ export function startShell({ root, onLocked, lock }) {
     render();
   }
 
+  function setCycleDay(day) {
+    cycleDay = day;
+    currentMonth = nowMonth();
+  }
+
   function setDemo(on) {
     demo = Boolean(on);
     banner.hidden = !demo;
@@ -79,9 +82,13 @@ export function startShell({ root, onLocked, lock }) {
     const seq = ++renderSeq;
     const { route, params } = parseHash();
     const view = VIEWS[route];
+    // A sheet belongs to the screen that opened it
+    if (route !== lastRoute) document.querySelectorAll('.sheet-overlay').forEach(el => el.remove());
+    lastRoute = route;
     title.textContent = view.title;
     picker.hidden = !view.usesMonth || Boolean(params.from || params.to);
-    monthText.textContent = monthLabel(currentMonth);
+    const range = cycleRange(currentMonth, cycleDay);
+    monthText.replaceChildren(h('span', {}, monthLabel(currentMonth)), range && h('span', { class: 'month-range' }, range));
     nextBtn.disabled = currentMonth >= nowMonth();
     backBtn.hidden = !view.back;
     backBtn.onclick = () => navigate(view.back);
@@ -92,7 +99,7 @@ export function startShell({ root, onLocked, lock }) {
     });
     const scroll = window.scrollY;
     if (!keepScroll && !keepFocus) main.replaceChildren(skeleton(3));
-    const ctx = { month: currentMonth, params, navigate, setMonth, setDemo, refresh: opts => render(opts), lock };
+    const ctx = { month: currentMonth, cycleDay, params, navigate, setMonth, setDemo, setCycleDay, refresh: opts => render(opts), lock };
     try {
       const out = await view.render(ctx);
       if (seq !== renderSeq) return;
@@ -173,6 +180,6 @@ export function startShell({ root, onLocked, lock }) {
   }
 
   window.addEventListener('popstate', () => render());
-  render();
+  api('prefs').then(p => setCycleDay(p.cycleDay), () => {}).finally(() => render());
   return { render, setDemo };
 }

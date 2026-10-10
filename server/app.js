@@ -103,13 +103,15 @@ export function createApp({ vault, appDir, port, idleMs = 5 * 60 * 1000, now = D
       const db = await openDatabase();
       migrate(db);
       generateDemo(db, { today: new Date(now()) });
+      // The budget cycle is a preference, so the demo follows the real one
+      db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('cycle_start_day', ?)", [String(Q.cycleDay(vault.db))]);
       demo = { db, day };
     }
     return { db: demo.db, save: () => {}, demo: true };
   };
-  const monthParam = url => {
+  const monthParam = (url, db) => {
     const m = url.searchParams.get('month');
-    return Q.isMonth(m) ? m : Q.currentMonth(new Date(now()));
+    return Q.isMonth(m) ? m : Q.cycleMonth(todayIso(), Q.cycleDay(db));
   };
   const hasValidToken = req => {
     const m = /^Bearer ([A-Za-z0-9_-]{20,100})$/.exec(req.headers.authorization || '');
@@ -205,15 +207,50 @@ export function createApp({ vault, appDir, port, idleMs = 5 * 60 * 1000, now = D
 
     'GET /api/overview': async ({ url }) => {
       const { db, demo: isDemo } = await data();
-      return { demo: isDemo, today: todayIso(), range: Q.monthRange(db), ...Q.overview(db, { month: monthParam(url), today: todayIso() }) };
+      return { demo: isDemo, today: todayIso(), range: Q.monthRange(db), ...Q.overview(db, { month: monthParam(url, db), today: todayIso() }) };
     },
 
     'GET /api/month': async ({ url }) => {
       const { db } = await data();
-      return { range: Q.monthRange(db), ...Q.monthDetail(db, monthParam(url)) };
+      return { range: Q.monthRange(db), ...Q.monthDetail(db, monthParam(url, db)) };
     },
 
     'GET /api/categories': async () => Q.categories((await data()).db),
+
+    'GET /api/prefs': async () => {
+      const { db } = await data();
+      return { ...Q.prefs(db), today: todayIso(), currentMonth: Q.cycleMonth(todayIso(), Q.cycleDay(db)) };
+    },
+
+    'POST /api/prefs': async ({ body }) => {
+      const { db, save, demo: isDemo } = await data();
+      if (body.cycleDay !== undefined) {
+        const d = body.cycleDay;
+        if (!Number.isInteger(d) || d < 1 || d > 28) throw new ApiError(400, 'bad_request');
+        // Saved in the real vault; the demo database gets a copy so the change shows right away
+        vault.db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('cycle_start_day', ?)", [String(d)]);
+        vault.save();
+        if (isDemo) db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('cycle_start_day', ?)", [String(d)]);
+      }
+      if (body.balanceAccounts !== undefined) {
+        const ids = body.balanceAccounts;
+        if (!Array.isArray(ids) || ids.length > 50 || ids.some(x => typeof x !== 'string' || x.length > 80)) throw new ApiError(400, 'bad_request');
+        const known = new Set(Q.prefs(db).bankAccounts.map(a => a.id));
+        db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('balance_accounts', ?)", [JSON.stringify(ids.filter(id => known.has(id)))]);
+        save();
+      }
+      return { ...Q.prefs(db), currentMonth: Q.cycleMonth(todayIso(), Q.cycleDay(db)) };
+    },
+
+    'GET /api/card-charge': async ({ url }) => {
+      const { db } = await data();
+      const account = url.searchParams.get('account') || '';
+      const date = url.searchParams.get('date') || '';
+      if (account.length > 80 || !/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new ApiError(400, 'bad_request');
+      const res = Q.cardCharge(db, account, date);
+      if (!res) throw new ApiError(404, 'not_found');
+      return res;
+    },
 
     'GET /api/accounts': async () => {
       const { db } = await data();
@@ -251,7 +288,10 @@ export function createApp({ vault, appDir, port, idleMs = 5 * 60 * 1000, now = D
       return result;
     },
 
-    'GET /api/budget': async ({ url }) => Q.budget((await data()).db, monthParam(url)),
+    'GET /api/budget': async ({ url }) => {
+      const { db } = await data();
+      return Q.budget(db, monthParam(url, db));
+    },
 
     'POST /api/budget': async ({ body }) => {
       const { db, save } = await data();

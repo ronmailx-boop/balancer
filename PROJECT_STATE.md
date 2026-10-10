@@ -1,11 +1,13 @@
 # PROJECT_STATE — Balancer
 
 ## Current Focus
-Phase 3 is done and verified on the phone: Leumi, Cal and Max all sync (2026-10-10).
-Next:
-1. Ron checks the real numbers (home, month, transactions, upcoming card bills) and reports anything wrong.
-2. Ron turns debug off: `rm .env`.
-3. Phase 4 (intelligence) starts only after Ron approves it.
+Phase 3 verified on the phone (Leumi, Cal, Max). Ron's follow-up requests, built (2026-10-10):
+- Budget month cycle: Settings -> "חודש התקציב" (start day 1-28; Ron wants 10 = 10th..9th). All totals,
+  budget, trends, alerts and projection use it (settings key cycle_start_day; Q.monthBounds(month, day), Q.cycleMonth).
+- Bank balance from chosen accounts: tap the balance on Home, or Settings -> "יתרה בעו״ש" (key balance_accounts; [] = all).
+- Card bill breakdown: tap a row in "חיובי אשראי קרובים" -> sheet with the card's transactions charged on that date (GET /api/card-charge).
+Next: Ron pulls, sets the start day to 10, picks the balance accounts, checks the bill breakdowns and numbers.
+Phase 4 starts only after Ron approves it.
 
 ## Browser history (Phase 0)
 - Path A (proot Debian Chromium) crashes on the S25 FE with SIGTRAP even without Puppeteer. Dropped.

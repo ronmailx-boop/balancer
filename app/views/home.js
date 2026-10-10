@@ -1,5 +1,7 @@
-import { api } from '../api.js';
-import { h, card, cardTitle, money, monthLabel, relativeDays, progress, budgetStatus, emptyState, shortDate } from '../ui.js';
+import { api, messageFor } from '../api.js';
+import { h, card, cardTitle, money, monthLabel, relativeDays, progress, budgetStatus, emptyState, shortDate, cycleRange, accountLabel, openSheet, toast } from '../ui.js';
+import { openBalancePicker } from './prefs.js';
+import { txRow, openDetail } from './transactions.js';
 import { rankedBars } from '../charts.js';
 
 export const title = 'בית';
@@ -17,6 +19,10 @@ export async function render(ctx) {
   }
 
   const net = o.net;
+  const bankAccounts = o.balances.accounts.filter(a => a.type !== 'card');
+  const bankCount = bankAccounts.length;
+  const included = bankAccounts.filter(a => a.inBalance);
+  const range = cycleRange(o.month, ctx.cycleDay);
   const remaining = o.budget?.remaining;
   const status = o.budget ? budgetStatus(o.budget.spent, o.budget.planned) : null;
 
@@ -24,9 +30,11 @@ export async function render(ctx) {
     h('section', { class: 'hero' },
       h('p', { class: 'hero-label' }, 'יתרה בעו"ש'),
       h('p', { class: 'hero-value' }, money(o.balances.total)),
-      h('p', { class: 'hero-sub' }, `עודכן ${o.balances.accounts[0]?.lastSyncAt ? new Date(o.balances.accounts[0].lastSyncAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) : '—'}`)),
+      h('p', { class: 'hero-sub' }, `עודכן ${o.balances.accounts[0]?.lastSyncAt ? new Date(o.balances.accounts[0].lastSyncAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) : '—'}`),
+      bankCount > 1 && h('button', { type: 'button', class: 'hero-link', onclick: () => openBalancePicker(() => ctx.refresh({ keepScroll: true })) },
+        o.balances.partial ? `לפי ${included.length} מתוך ${bankCount} חשבונות · שינוי` : `כל ${bankCount} החשבונות · בחירה`)),
 
-    card(cardTitle(monthLabel(o.month)),
+    card(cardTitle(monthLabel(o.month), range && h('span', { class: 'muted small' }, range)),
       h('div', { class: 'stats' },
         stat('הכנסות', money(o.income), 'pos'),
         stat('הוצאות', money(o.expenses)),
@@ -45,10 +53,12 @@ export async function render(ctx) {
         a.categoryId && h('button', { class: 'link', type: 'button', onclick: () => ctx.navigate('transactions', { category: a.categoryId }) }, 'פירוט'))))),
 
     o.upcomingCharges.length > 0 && card(cardTitle('חיובי אשראי קרובים'),
-      h('ul', { class: 'list' }, o.upcomingCharges.map(c => h('li', { class: 'list-row' },
-        h('span', { class: 'list-icon', 'aria-hidden': 'true' }, '💳'),
-        h('span', { class: 'list-main' }, h('span', {}, `${c.name} ••${c.masked}`), h('span', { class: 'muted small' }, `יורד מהעו"ש ${relativeDays(c.date, o.today)} (${shortDate(c.date)})`)),
-        h('span', { class: 'list-amount' }, money(c.amount)))))),
+      h('ul', { class: 'list' }, o.upcomingCharges.map(c => h('li', {},
+        h('button', { type: 'button', class: 'list-row list-button', onclick: () => openCharge(ctx, c) },
+          h('span', { class: 'list-icon', 'aria-hidden': 'true' }, '💳'),
+          h('span', { class: 'list-main' }, h('span', {}, accountLabel(c.name, c.masked)), h('span', { class: 'muted small' }, `יורד מהעו"ש ${relativeDays(c.date, o.today)} (${shortDate(c.date)})`)),
+          h('span', { class: 'list-amount' }, money(c.amount)),
+          h('span', { class: 'list-chevron', 'aria-hidden': 'true' }, '‹')))))),
 
     card(cardTitle('החשבונות שלי', h('button', { class: 'link', type: 'button', onclick: () => ctx.navigate('accounts') }, 'ניהול')),
       h('div', { class: 'account-strip' }, o.balances.accounts.map(a => h('div', { class: `account-card ${a.type}` },
@@ -60,6 +70,24 @@ export async function render(ctx) {
     o.topCategories.length > 0 && card(cardTitle('הוצאות מובילות', h('button', { class: 'link', type: 'button', onclick: () => ctx.navigate('month') }, 'לכל הקטגוריות')),
       rankedBars(o.topCategories, { onSelect: c => ctx.navigate('transactions', { category: c.id ?? 'none' }) })),
   ];
+}
+
+// The transactions that make up one card bill
+async function openCharge(ctx, c) {
+  let res;
+  let cats;
+  try {
+    [res, cats] = await Promise.all([api(`card-charge?account=${encodeURIComponent(c.accountId)}&date=${c.date}`), api('categories')]);
+  } catch (err) {
+    return toast(messageFor(err));
+  }
+  const sheet = openSheet(`${accountLabel(res.account.name, res.account.masked)} · ${shortDate(res.date)}`, h('div', { class: 'charge-detail' },
+    h('div', { class: 'charge-head' },
+      h('span', { class: 'tx-detail-amount' }, money(res.amount, { decimals: true })),
+      h('span', { class: 'muted small' }, `${res.items.length} עסקאות · יורד מהעו"ש ב-${shortDate(res.date)}`)),
+    res.items.length
+      ? h('ul', { class: 'tx-list' }, res.items.map(t => txRow(t, () => { sheet.close(); openDetail(ctx, t, cats); })))
+      : h('p', { class: 'muted' }, 'לא נמצא פירוט לחיוב הזה.')));
 }
 
 function stat(label, value, cls = '') {

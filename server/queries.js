@@ -22,10 +22,11 @@ export const one = (db, sql, params) => all(db, sql, params)[0];
 
 export const isMonth = m => typeof m === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(m);
 
-export function monthBounds(month) {
-  const [y, m] = month.split('-').map(Number);
-  const next = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, '0')}`;
-  return [`${month}-01`, `${next}-01`];
+// A "month" is a budget cycle: from its start day up to the day before the same day next month.
+// With cycleDay 10, "2026-10" is 2026-10-10 .. 2026-11-09.
+export function monthBounds(month, day = 1) {
+  const dd = String(day).padStart(2, '0');
+  return [`${month}-${dd}`, `${shiftMonth(month, 1)}-${dd}`];
 }
 
 export function shiftMonth(month, delta) {
@@ -34,14 +35,43 @@ export function shiftMonth(month, delta) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
-export function currentMonth(today = new Date()) {
-  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+// The cycle a day belongs to
+export function cycleMonth(dayIso, day = 1) {
+  const m = dayIso.slice(0, 7);
+  return Number(dayIso.slice(8, 10)) < day ? shiftMonth(m, -1) : m;
+}
+
+const setting = (db, key) => one(db, 'SELECT value FROM settings WHERE key = ?', [key])?.value;
+
+export function cycleDay(db) {
+  const v = Number(setting(db, 'cycle_start_day'));
+  return Number.isInteger(v) && v >= 1 && v <= 28 ? v : 1;
+}
+
+const bounds = (db, month) => monthBounds(month, cycleDay(db));
+
+// Bank accounts whose balance makes up "יתרה בעו״ש". None chosen (or none left) = all bank accounts.
+export function balanceAccountIds(db) {
+  const bank = all(db, "SELECT id FROM accounts WHERE type != 'card' ORDER BY display_name").map(r => r.id);
+  let chosen = null;
+  try { chosen = JSON.parse(setting(db, 'balance_accounts') || 'null'); } catch { /* ignore */ }
+  const picked = Array.isArray(chosen) ? bank.filter(id => chosen.includes(id)) : [];
+  return picked.length ? picked : bank;
+}
+
+export function prefs(db) {
+  const included = new Set(balanceAccountIds(db));
+  return {
+    cycleDay: cycleDay(db),
+    bankAccounts: all(db, "SELECT id, display_name AS name, masked_number AS masked, balance FROM accounts WHERE type != 'card' ORDER BY display_name")
+      .map(a => ({ ...a, included: included.has(a.id) })),
+  };
 }
 
 const r2 = n => Math.round((n || 0) * 100) / 100;
 
 export function monthTotals(db, month) {
-  const [from, to] = monthBounds(month);
+  const [from, to] = bounds(db, month);
   const row = one(db, `
     SELECT COALESCE(SUM(CASE WHEN COALESCE(c.type, 'expense') = 'income' THEN t.charged_amount END), 0) AS income,
            COALESCE(-SUM(CASE WHEN COALESCE(c.type, 'expense') = 'expense' THEN t.charged_amount END), 0) AS expenses
@@ -52,7 +82,8 @@ export function monthTotals(db, month) {
 
 export function monthRange(db) {
   const row = one(db, `SELECT MIN(${EFF_DATE}) AS first, MAX(${EFF_DATE}) AS last FROM transactions t`);
-  return row.first ? { first: row.first.slice(0, 7), last: row.last.slice(0, 7) } : null;
+  const day = cycleDay(db);
+  return row.first ? { first: cycleMonth(row.first, day), last: cycleMonth(row.last, day) } : null;
 }
 
 export function categories(db) {
@@ -60,7 +91,7 @@ export function categories(db) {
 }
 
 export function categoryBreakdown(db, month) {
-  const [from, to] = monthBounds(month);
+  const [from, to] = bounds(db, month);
   const rows = all(db, `
     SELECT ${EFF_CAT} AS id, c.name, c.icon, c.is_fixed AS fixed, -SUM(t.charged_amount) AS amount, COUNT(*) AS count
     FROM transactions t LEFT JOIN categories c ON c.id = ${EFF_CAT}
@@ -86,8 +117,10 @@ export function accountsOverview(db) {
     SELECT a.id, a.display_name AS name, a.masked_number AS masked, a.type, a.balance, a.currency, a.updated_at AS updatedAt,
            c.id AS connectionId, c.provider, c.kind, c.display_name AS connectionName, c.status, c.last_sync_at AS lastSyncAt
     FROM accounts a JOIN connections c ON c.id = a.connection_id ORDER BY c.kind, a.display_name`);
-  const total = accounts.filter(a => a.type !== 'card').reduce((s, a) => s + (a.balance || 0), 0);
-  return { total: r2(total), accounts };
+  const included = new Set(balanceAccountIds(db));
+  const total = accounts.filter(a => included.has(a.id)).reduce((s, a) => s + (a.balance || 0), 0);
+  const bankCount = accounts.filter(a => a.type !== 'card').length;
+  return { total: r2(total), accounts: accounts.map(a => ({ ...a, inBalance: included.has(a.id) })), partial: included.size < bankCount };
 }
 
 export function upcomingCharges(db, today) {
@@ -112,6 +145,7 @@ export function overview(db, { month, today }) {
     upcomingCharges: charges,
     topCategories: breakdown.slice(0, 4),
     alerts: alerts(db, { month, today, breakdown, balances, charges }),
+    cycle: bounds(db, month),
     hasData: balances.accounts.length > 0,
   };
 }
@@ -122,18 +156,18 @@ function alerts(db, { month, today, breakdown, balances, charges }) {
     out.push({ level: 'critical', kind: 'connection', text: `החיבור ל${conn.name} דורש טיפול` });
   }
   // Overspending, scaled to how far into the month we are
-  const isCurrent = today.slice(0, 7) === month;
+  const isCurrent = cycleMonth(today, cycleDay(db)) === month;
   for (const b of breakdown) {
     if (b.budget == null || b.budget <= 0) continue;
     if (b.amount > b.budget * 1.005) out.push({ level: 'critical', kind: 'budget', categoryId: b.id, text: `חריגה בתקציב ${b.name}: ${fmt(b.amount)} מתוך ${fmt(b.budget)}` });
     else if (isCurrent && !b.fixed && b.amount > b.budget * 0.9) out.push({ level: 'warning', kind: 'budget', categoryId: b.id, text: `קרוב לגבול בתקציב ${b.name}` });
   }
   // Unusual charge: a single expense above 3x the median expense of its category in the last 6 months
-  const [from, to] = monthBounds(month);
+  const [from, to] = bounds(db, month);
   const history = all(db, `
     SELECT ${EFF_CAT} AS cat, -t.charged_amount AS amount FROM transactions t LEFT JOIN categories c ON c.id = ${EFF_CAT}
     WHERE ${COUNTED} AND c.type = 'expense' AND t.charged_amount < 0 AND t.type != 'installments' AND ${EFF_DATE} >= ? AND ${EFF_DATE} < ?`,
-  [monthBounds(shiftMonth(month, -6))[0], from]);
+  [bounds(db, shiftMonth(month, -6))[0], from]);
   const byCat = {};
   for (const h of history) (byCat[h.cat] ??= []).push(h.amount);
   const current = all(db, `
@@ -147,7 +181,9 @@ function alerts(db, { month, today, breakdown, balances, charges }) {
     if (t.amount > Math.max(median * 3, 150)) out.push({ level: 'warning', kind: 'unusual', transactionId: t.id, text: `חיוב חריג: ${t.description} ${fmt(t.amount)}` });
   }
   // Card bills larger than the bank balance
-  const due = charges.filter(c => c.date.slice(0, 7) === today.slice(0, 7)).reduce((s, c) => s + c.amount, 0);
+  // Card bills still due in the current cycle, against the chosen bank balance
+  const [, cycleEnd] = bounds(db, cycleMonth(today, cycleDay(db)));
+  const due = charges.filter(c => c.date < cycleEnd).reduce((s, c) => s + c.amount, 0);
   if (due > 0 && balances.total < due) out.push({ level: 'critical', kind: 'balance', text: 'היתרה בעו"ש נמוכה מחיובי האשראי הקרובים' });
   return out.slice(0, 6);
 }
@@ -176,7 +212,7 @@ export function transactions(db, f = {}) {
   const where = [];
   const params = [];
   if (isMonth(f.month)) {
-    const [from, to] = monthBounds(f.month);
+    const [from, to] = bounds(db, f.month);
     where.push(`${EFF_DATE} >= ? AND ${EFF_DATE} < ?`);
     params.push(from, to);
   }
@@ -196,9 +232,25 @@ export function transactions(db, f = {}) {
     ORDER BY ${EFF_DATE} DESC, t.first_seen_at DESC, t.id DESC LIMIT 2000`, params);
   const q = f.q ? normalizeText(f.q) : '';
   return rows
-    .map(r => ({ ...r, tags: safeTags(r.tags), recurring: Boolean(r.recurring), excluded: Boolean(r.excluded) }))
+    .map(txRow)
     .filter(r => !q || normalizeText(`${r.description} ${r.notes || ''} ${r.categoryName || ''} ${r.memo || ''}`).includes(q))
     .slice(0, 500);
+}
+
+const txRow = r => ({ ...r, tags: safeTags(r.tags), recurring: Boolean(r.recurring), excluded: Boolean(r.excluded) });
+
+// What a card bill is made of: the card's transactions charged on that date
+export function cardCharge(db, accountId, date) {
+  const account = one(db, "SELECT id, display_name AS name, masked_number AS masked FROM accounts WHERE id = ? AND type = 'card'", [accountId]);
+  if (!account) return null;
+  const items = all(db, `
+    SELECT ${TX_COLUMNS} FROM transactions t
+    JOIN accounts a ON a.id = t.account_id
+    LEFT JOIN categories c ON c.id = ${EFF_CAT}
+    WHERE t.account_id = ? AND COALESCE(t.processed_date, t.date) = ?
+    ORDER BY t.date DESC, t.id`, [accountId, date]).map(txRow);
+  const bill = one(db, 'SELECT amount FROM card_charges WHERE account_id = ? AND charge_date = ?', [accountId, date]);
+  return { account, date, amount: r2(bill ? bill.amount : -items.reduce((s, t) => s + t.amount, 0)), items };
 }
 
 function safeTags(s) {
@@ -323,7 +375,7 @@ export function copyBudget(db, month) {
 }
 
 export function trends(db, { months = 6, today }) {
-  const current = today.slice(0, 7);
+  const current = cycleMonth(today, cycleDay(db));
   const list = [];
   for (let i = months - 1; i >= 0; i--) {
     const m = shiftMonth(current, -i);
@@ -350,9 +402,9 @@ export function trends(db, { months = 6, today }) {
 // End-of-month bank balance: today's balance + expected recurring items + card bills still due
 // this month + variable spending at the current pace (only what is paid from the bank this month).
 export function projection(db, today) {
-  const month = today.slice(0, 7);
-  const [, end] = monthBounds(month);
-  const bank = one(db, "SELECT COALESCE(SUM(balance), 0) AS b FROM accounts WHERE type != 'card'").b;
+  const [, end] = bounds(db, cycleMonth(today, cycleDay(db)));
+  const ids = balanceAccountIds(db);
+  const bank = ids.length ? one(db, `SELECT COALESCE(SUM(balance), 0) AS b FROM accounts WHERE id IN (${ids.map(() => '?').join(',')})`, ids).b : 0;
   const recurring = all(db, "SELECT merchant, typical_amount AS amount, next_expected AS date FROM recurring_items WHERE status = 'active' AND next_expected > ? AND next_expected < ?", [today, end]);
   // Card subscriptions are inside the card bill; keep only bank-side items
   const bankDescriptions = new Set(all(db, "SELECT DISTINCT t.description FROM transactions t JOIN accounts a ON a.id = t.account_id WHERE a.type != 'card'").map(r => r.description));

@@ -69,6 +69,25 @@ export function shiftMonth(month, delta) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
+// Budget cycle helpers (mirror server/queries.js): with day 10, "2026-10" is 10.10–9.11
+const pad = n => String(n).padStart(2, '0');
+export const todayLocal = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+};
+export function cycleMonth(dayIso, day = 1) {
+  const m = dayIso.slice(0, 7);
+  return Number(dayIso.slice(8, 10)) < day ? shiftMonth(m, -1) : m;
+}
+export function cycleRange(month, day = 1) {
+  if (day === 1) return '';
+  const end = toDate(`${shiftMonth(month, 1)}-${pad(day)}`);
+  end.setDate(end.getDate() - 1);
+  return `${shortDate(`${month}-${pad(day)}`)}–${dateFmt.format(end)}`;
+}
+// "Max 1228" already carries its number; don't print it twice
+export const accountLabel = (name, masked) => (masked && !String(name).includes(masked) ? `${name} ••${masked}` : name);
+
 export function relativeDays(iso, todayIso) {
   const days = Math.round((toDate(iso) - toDate(todayIso)) / 86400000);
   if (days === 0) return 'היום';

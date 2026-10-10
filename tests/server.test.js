@@ -252,3 +252,18 @@ function Q(db, sql) {
   stmt.free();
   return row;
 }
+
+test('prefs: cycle day and balance accounts are validated and saved', async t => {
+  const s = await start();
+  t.after(s.close);
+  const { token } = (await s.req('POST', '/api/setup', { body: { password: PW } })).json;
+  assert.equal((await s.req('POST', '/api/prefs', { token, body: { cycleDay: 0 } })).status, 400);
+  assert.equal((await s.req('POST', '/api/prefs', { token, body: { cycleDay: 10.5 } })).status, 400);
+  assert.equal((await s.req('POST', '/api/prefs', { token, body: { balanceAccounts: 'x' } })).status, 400);
+  const ok = await s.req('POST', '/api/prefs', { token, body: { cycleDay: 10 } });
+  assert.equal(ok.status, 200);
+  assert.equal(ok.json.cycleDay, 10);
+  assert.equal((await s.req('GET', '/api/prefs', { token })).json.cycleDay, 10);
+  assert.equal((await s.req('GET', '/api/card-charge?account=x&date=bad', { token })).status, 400);
+  assert.equal((await s.req('GET', '/api/card-charge?account=x&date=2026-10-10', { token })).status, 404);
+});
