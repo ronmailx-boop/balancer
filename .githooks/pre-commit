@@ -1,0 +1,3 @@
+#!/bin/sh
+# Enabled by scripts/install.sh (git config core.hooksPath .githooks)
+exec node scripts/secret-scan.mjs

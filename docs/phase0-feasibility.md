@@ -1,7 +1,7 @@
 # Phase 0: Feasibility Report
 
 Date: 2026-10-10
-Status: **GO.** The cloud checks passed, and on 2026-10-10 Ron ran the bootstrap on his Galaxy S25 FE (Android 16) and reported that all checks passed (env, browser launch, login-page probes for Leumi, Visa Cal and Max).
+Status: **Conditional GO.** The cloud checks passed. On the phone (Galaxy S25 FE, Android 16) Chromium started but the DevTools connection dropped (`socket hang up`). Being diagnosed with `scripts/spike/diagnose.sh`. Phases 1–2 do not depend on the browser and continue meanwhile.
 
 ## 1. Summary
 

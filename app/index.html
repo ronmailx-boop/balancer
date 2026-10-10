@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#7367f0">
+  <title>Balancer</title>
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="app.css">
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <main class="shell">
+    <header class="brand">
+      <div class="logo" aria-hidden="true">₪</div>
+      <h1>Balancer</h1>
+      <p class="tagline">הכסף שלך, רק בטלפון שלך</p>
+    </header>
+
+    <section id="view-loading" class="card view">
+      <div class="spinner" aria-hidden="true"></div>
+      <p>טוען…</p>
+    </section>
+
+    <section id="view-setup" class="card view" hidden>
+      <h2>יצירת סיסמת מאסטר</h2>
+      <p class="hint">הסיסמה מצפינה את כל הנתונים בטלפון. היא לא נשמרת בשום מקום, ו<strong>אין דרך לשחזר אותה</strong> אם תשכח אותה.</p>
+      <form id="form-setup" novalidate>
+        <label for="setup-password">סיסמה (לפחות 8 תווים)</label>
+        <input id="setup-password" type="password" autocomplete="new-password" minlength="8" required>
+        <label for="setup-confirm">אימות סיסמה</label>
+        <input id="setup-confirm" type="password" autocomplete="new-password" minlength="8" required>
+        <p class="error" role="alert" id="setup-error"></p>
+        <button type="submit" class="btn primary">יצירת הכספת</button>
+      </form>
+    </section>
+
+    <section id="view-unlock" class="card view" hidden>
+      <h2>פתיחת הכספת</h2>
+      <form id="form-unlock" novalidate>
+        <label for="unlock-password">סיסמת מאסטר</label>
+        <input id="unlock-password" type="password" autocomplete="current-password" required>
+        <p class="error" role="alert" id="unlock-error"></p>
+        <button type="submit" class="btn primary">פתיחה</button>
+      </form>
+    </section>
+
+    <section id="view-home" class="card view" hidden>
+      <h2>הכספת פתוחה 🔓</h2>
+      <p class="hint">היסודות מוכנים. המסכים המלאים (יתרות, הוצאות, תקציב) יגיעו בשלב 2.</p>
+      <dl class="facts">
+        <dt>גרסת מבנה נתונים</dt><dd id="info-schema">—</dd>
+        <dt>נעילה אוטומטית אחרי</dt><dd id="info-idle">—</dd>
+      </dl>
+      <button type="button" class="btn" id="btn-lock">נעילה</button>
+
+      <details class="section">
+        <summary>החלפת סיסמת מאסטר</summary>
+        <form id="form-password" novalidate>
+          <label for="pw-old">סיסמה נוכחית</label>
+          <input id="pw-old" type="password" autocomplete="current-password" required>
+          <label for="pw-new">סיסמה חדשה</label>
+          <input id="pw-new" type="password" autocomplete="new-password" minlength="8" required>
+          <label for="pw-confirm">אימות סיסמה חדשה</label>
+          <input id="pw-confirm" type="password" autocomplete="new-password" minlength="8" required>
+          <p class="error" role="alert" id="password-error"></p>
+          <p class="success" role="status" id="password-ok"></p>
+          <button type="submit" class="btn primary">החלפה</button>
+        </form>
+      </details>
+    </section>
+
+    <p class="error banner" role="alert" id="global-error" hidden></p>
+  </main>
+</body>
+</html>

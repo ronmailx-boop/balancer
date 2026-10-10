@@ -1,8 +1,12 @@
 # PROJECT_STATE — Balancer
 
 ## Current Focus
-Phase 0 is complete: Ron ran the bootstrap on the phone (S25 FE, Android 16) on 2026-10-10 and reported all checks passed. Decision: GO.
-Next step: get Ron's approval for the Phase 1 plan, then build it. Optional: Ron pastes `~/balancer/phase0-results.txt` so the scrypt cost can be tuned to the phone's timing (default N=2^17).
+Phase 1 (foundations) is built and tested in the cloud: 34 tests pass, and the setup/unlock/lock screens were checked in headless Chromium.
+OPEN BLOCKER from Phase 0: on the phone the browser check FAILED. Chromium starts, then the DevTools socket hangs up (`socket hang up`, ECONNRESET). The screenshot also showed `Node.js v26.3.1` at a plain `~ $` prompt, so it may have run in native Termux rather than in Debian.
+Next steps:
+1. Ron runs `cd ~/balancer && git pull && bash scripts/spike/diagnose.sh` and sends the output (Debian vs Termux, direct Chromium test, 4 flag sets).
+2. Ron runs `bash scripts/install.sh && bash scripts/start.sh` and checks the Phase 1 screens in Chrome.
+3. Then Phase 2 (UI shell in Demo Mode). The browser blocker must be solved before Phase 3.
 
 ## Ron's answers (2026-10-10)
 - Device: Samsung Galaxy S25 FE, Android 16 → phantom-process fix: the Developer options toggle was not found on his Samsung; run checks first, fall back to adb-over-wireless-debugging from Termux if Chromium gets killed (signal 9).
@@ -12,6 +16,7 @@ Next step: get Ron's approval for the Phase 1 plan, then build it. Optional: Ron
 - Ron uses Chrome on Android. The UI (PWA) opens in his Chrome at http://127.0.0.1; the scraping uses a separate headless Chromium inside Termux/Debian (Puppeteer cannot drive the Chrome app, and keeping it separate avoids touching his personal browsing sessions).
 
 ## Decisions
+- Server runs in native Termux Node (v26 there); only the scraper needs Debian + Chromium.
 - Browser: proot-distro Debian + `apt install chromium` + NodeSource Node 22 (path A); Termux-native Chromium as fallback (B).
 - Library: `israeli-bank-scrapers-core` 6.12.2 (requires Node >= 22.22.2), with `executablePath`.
 - Storage: sql.js in memory; whole DB encrypted with AES-256-GCM on disk, written atomically.
@@ -20,13 +25,24 @@ Next step: get Ron's approval for the Phase 1 plan, then build it. Optional: Ron
 
 ## Phases
 - [x] Phase 0: cloud checks (crypto, storage, Chromium launch, provider list), Termux setup script, report
-- [x] Phase 0: run on the phone (Ron) — all checks passed
-- [ ] Phase 1: Foundations (scaffold, encrypted store, local server, schema)
+- [ ] Phase 0: run on the phone — env OK, browser launch FAILED (socket hang up); diagnostics in scripts/spike/diagnose.sh
+- [x] Phase 1: Foundations
+  - [x] Scaffold, package.json, .env.example, README with dependency reasons and risks
+  - [x] Termux scripts: scripts/install.sh, scripts/start.sh
+  - [x] Secret scan (scripts/secret-scan.mjs) + pre-commit hook (.githooks)
+  - [x] Crypto: scrypt KDF + AES-256-GCM (server/crypto.js)
+  - [x] Vault: create/unlock/lock/change password, wrapped data key, whole-DB encryption, per-field sealing (server/vault.js)
+  - [x] Schema + migrations (shared/migrations.js, server/db.js)
+  - [x] Local server: 127.0.0.1, Host/Origin checks, session token, unlock backoff, auto-lock, CSP (server/app.js)
+  - [x] Minimal Hebrew RTL screens: setup / unlock / home / change password (app/)
+  - [x] Tests (tests/*.test.js)
+  - [ ] Ron checks it on the phone
 - [ ] Phase 2: UI shell in Demo Mode
 - [ ] Phase 3: Scraper integration
 - [ ] Phase 4: Intelligence
 - [ ] Phase 5: Polish and hardening
 
 ## Open questions for Ron
-1. Approve the Phase 1 plan
-2. (Optional) `phase0-results.txt` numbers for scrypt tuning
+1. Output of scripts/spike/diagnose.sh
+2. Does Phase 1 run on the phone (install.sh + start.sh)?
+3. (Optional) scrypt timings from phase0-results.txt
