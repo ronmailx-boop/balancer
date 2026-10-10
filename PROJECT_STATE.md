@@ -1,10 +1,11 @@
 # PROJECT_STATE — Balancer
 
 ## Current Focus
-Phase 3 on the phone: Leumi and Cal synced OK. Max logged in, then failed in fetch:
-"Unknown transaction type העברה לסל מצטבר" (library 6.12.2 = latest, throws on unknown Max plan names).
-Fix: scripts/patch-scrapers.mjs (npm postinstall + install.sh) maps unknown Max plans to normal charges.
-Next: Ron runs `git pull && bash scripts/install.sh`, restarts, syncs Max, then `rm .env` to turn debug off.
+Phase 3 is done and verified on the phone: Leumi, Cal and Max all sync (2026-10-10).
+Next:
+1. Ron checks the real numbers (home, month, transactions, upcoming card bills) and reports anything wrong.
+2. Ron turns debug off: `rm .env`.
+3. Phase 4 (intelligence) starts only after Ron approves it.
 
 ## Browser history (Phase 0)
 - Path A (proot Debian Chromium) crashes on the S25 FE with SIGTRAP even without Puppeteer. Dropped.
@@ -55,7 +56,7 @@ Next: Ron runs `git pull && bash scripts/install.sh`, restarts, syncs Max, then 
   - [x] Month picker + swipe, pull-to-refresh (reload), skeletons, toasts, bottom sheet
   - [x] PWA: manifest, icons, service worker (offline shell; API never cached)
   - [ ] Ron checks on the phone
-- [x] Phase 3: Scraper integration (built and tested in the cloud with fake data; first real sync is Ron's)
+- [x] Phase 3: Scraper integration (verified on the phone: Leumi, Cal and Max all sync)
   - [x] scraper/worker.js: separate process, Termux Chromium, persistent profile per connection, credentials over IPC
   - [x] scraper/providers.js: Leumi, Cal, Max first + the rest, Hebrew field labels (no One Zero)
   - [x] shared/normalize.js: Israeli calendar dates, masked numbers, stable ids, pending, installments, card bills
@@ -64,7 +65,7 @@ Next: Ron runs `git pull && bash scripts/install.sh`, restarts, syncs Max, then 
   - [x] API: providers, connections (add/update/delete), sync, sync status
   - [x] UI: accounts screen (add, edit, delete, sync now, progress, Hebrew errors), pull-to-refresh on home syncs all
   - [x] Tests with recorded-shape fake fixtures (tests/fixtures/scrapes.js)
-  - [ ] Ron: first real sync of Leumi, then Cal and Max
+  - [x] Ron: first real sync of Leumi, Cal and Max (2026-10-10; Max needed the unknown-plan patch)
 - [ ] Phase 4: Intelligence
 - [ ] Phase 5: Polish and hardening
 
