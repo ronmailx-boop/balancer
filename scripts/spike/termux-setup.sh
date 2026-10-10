@@ -7,7 +7,8 @@ REPO="$(cd "$(dirname "$0")/../.." && pwd)"
 DEBIAN_ROOT="$PREFIX/var/lib/proot-distro/installed-rootfs/debian"
 
 echo "== 1/4 Termux packages"
-pkg update -y -o Dpkg::Options::=--force-confnew
+# Full upgrade first: a partial upgrade breaks shared libs (e.g. curl vs libngtcp2).
+pkg upgrade -y -o Dpkg::Options::=--force-confnew
 pkg install -y -o Dpkg::Options::=--force-confnew proot-distro git
 
 echo "== 2/4 Debian userland"
