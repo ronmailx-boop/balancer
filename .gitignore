@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+
+# Local data - never commit
+data/
+*.db
+*.sqlite
+*.sqlite3
+*.enc
+*.bak
+backups/
+*.balancer-backup
+
+# Secrets and keys
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+
+# Scraper debug output
+screenshots/
+*.png.debug
+scraper-debug/
+debug/
+*.har
+*.log

@@ -1,0 +1,17 @@
+{
+  "name": "balancer-phase0-spike",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Phase 0 feasibility checks for running Balancer on Android/Termux. No credentials, no real data.",
+  "type": "module",
+  "scripts": {
+    "env": "node check-env.mjs",
+    "browser": "node launch-browser.mjs",
+    "probe": "node login-page-probe.mjs"
+  },
+  "dependencies": {
+    "israeli-bank-scrapers-core": "6.12.2",
+    "puppeteer-core": "24.43.1",
+    "sql.js": "1.14.2"
+  }
+}
