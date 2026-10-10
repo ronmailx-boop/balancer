@@ -92,7 +92,7 @@ export function accountsOverview(db) {
 
 export function upcomingCharges(db, today) {
   return all(db, `
-    SELECT cc.account_id AS accountId, a.display_name AS name, a.masked_number AS masked, cc.charge_date AS date, -cc.amount AS amount
+    SELECT cc.account_id AS accountId, a.display_name AS name, a.masked_number AS masked, cc.charge_date AS date, cc.amount AS amount
     FROM card_charges cc JOIN accounts a ON a.id = cc.account_id
     WHERE cc.charge_date >= ? ORDER BY cc.charge_date`, [today]).map(c => ({ ...c, amount: r2(c.amount) }));
 }
@@ -125,8 +125,8 @@ function alerts(db, { month, today, breakdown, balances, charges }) {
   const isCurrent = today.slice(0, 7) === month;
   for (const b of breakdown) {
     if (b.budget == null || b.budget <= 0) continue;
-    if (b.amount > b.budget) out.push({ level: 'critical', kind: 'budget', categoryId: b.id, text: `חריגה בתקציב ${b.name}: ${fmt(b.amount)} מתוך ${fmt(b.budget)}` });
-    else if (isCurrent && b.amount > b.budget * 0.9) out.push({ level: 'warning', kind: 'budget', categoryId: b.id, text: `קרוב לגבול בתקציב ${b.name}` });
+    if (b.amount > b.budget * 1.005) out.push({ level: 'critical', kind: 'budget', categoryId: b.id, text: `חריגה בתקציב ${b.name}: ${fmt(b.amount)} מתוך ${fmt(b.budget)}` });
+    else if (isCurrent && !b.fixed && b.amount > b.budget * 0.9) out.push({ level: 'warning', kind: 'budget', categoryId: b.id, text: `קרוב לגבול בתקציב ${b.name}` });
   }
   // Unusual charge: a single expense above 3x the median expense of its category in the last 6 months
   const [from, to] = monthBounds(month);
@@ -357,7 +357,7 @@ export function projection(db, today) {
   // Card subscriptions are inside the card bill; keep only bank-side items
   const bankDescriptions = new Set(all(db, "SELECT DISTINCT t.description FROM transactions t JOIN accounts a ON a.id = t.account_id WHERE a.type != 'card'").map(r => r.description));
   const bankRecurring = recurring.filter(r => bankDescriptions.has(r.merchant));
-  const cardBills = all(db, 'SELECT -amount AS amount, charge_date AS date FROM card_charges WHERE charge_date > ? AND charge_date < ?', [today, end]);
+  const cardBills = all(db, 'SELECT amount, charge_date AS date FROM card_charges WHERE charge_date > ? AND charge_date < ?', [today, end]);
   const expected = bankRecurring.reduce((s, r) => s + r.amount, 0) - cardBills.reduce((s, c) => s + c.amount, 0);
   return {
     today: r2(bank),

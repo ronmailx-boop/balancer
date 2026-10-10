@@ -22,7 +22,7 @@ Stop with Ctrl+C in Termux; the vault locks on exit.
 ```
 app/       PWA front end (static, RTL Hebrew), served by the local server
 server/    Local Node server: encrypted vault, API, security headers
-shared/    Schema and migrations (later: category rules, types)
+shared/    Schema and migrations, default categories and rules, rules engine, demo data generator
 scraper/   (Phase 3) scraper runner
 scripts/   install / start / secret-scan; scripts/spike = Phase 0 checks
 tests/     node:test suites (fake data only)
@@ -33,7 +33,7 @@ docs/      Spec, security notes, reports
 
 ```bash
 npm install
-npm test               # 34 tests: crypto, KDF, vault, migrations, server security, log redaction
+npm test               # 46 tests: crypto, KDF, vault, migrations, server security, log redaction, demo data, queries
 npm run secret-scan    # scan all tracked files
 ```
 

@@ -1,0 +1,150 @@
+// App shell: header with month picker, demo banner, bottom navigation, hash router,
+// month swipe and pull-to-refresh.
+import { h, monthLabel, shiftMonth, skeleton, errorState } from './ui.js';
+import { messageFor } from './api.js';
+import * as home from './views/home.js';
+import * as month from './views/month.js';
+import * as transactions from './views/transactions.js';
+import * as budget from './views/budget.js';
+import * as more from './views/more.js';
+import * as trends from './views/trends.js';
+import * as recurring from './views/recurring.js';
+import * as accounts from './views/accounts.js';
+import * as settings from './views/settings.js';
+
+const VIEWS = { home, month, transactions, budget, more, trends, recurring, accounts, settings };
+const NAV = [
+  ['home', '🏠', 'בית'],
+  ['month', '📊', 'חודשי'],
+  ['transactions', '🧾', 'עסקאות'],
+  ['budget', '🎯', 'תקציב'],
+  ['more', '☰', 'עוד'],
+];
+const NAV_PARENT = { trends: 'more', recurring: 'more', accounts: 'more', settings: 'more' };
+
+const nowMonth = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+};
+
+export function startShell({ root, onLocked, lock }) {
+  let currentMonth = nowMonth();
+  let demo = false;
+  let renderSeq = 0;
+
+  // Note: ‹ and › are mirrored in RTL text, so '‹' renders pointing right
+  const title = h('h1', { class: 'top-title' });
+  const backBtn = h('button', { type: 'button', class: 'icon-btn back', 'aria-label': 'חזרה', hidden: true }, '‹');
+  const prevBtn = h('button', { type: 'button', class: 'icon-btn', 'aria-label': 'החודש הקודם', onclick: () => setMonth(shiftMonth(currentMonth, -1)) }, '‹');
+  const nextBtn = h('button', { type: 'button', class: 'icon-btn', 'aria-label': 'החודש הבא', onclick: () => setMonth(shiftMonth(currentMonth, 1)) }, '›');
+  const monthText = h('span', { class: 'month-label', 'aria-live': 'polite' });
+  const picker = h('div', { class: 'month-picker' }, prevBtn, monthText, nextBtn);
+  const banner = h('div', { class: 'demo-banner', role: 'status', hidden: true }, '🧪 מצב הדגמה: נתונים לדוגמה בלבד');
+  const pull = h('div', { class: 'pull', 'aria-hidden': 'true' }, '↻');
+  const main = h('main', { class: 'content', id: 'content', tabindex: '-1' });
+  const nav = h('nav', { class: 'bottom-nav', 'aria-label': 'ניווט ראשי' }, NAV.map(([route, icon, label]) =>
+    h('button', { type: 'button', dataset: { route }, onclick: () => navigate(route) }, h('span', { class: 'nav-icon', 'aria-hidden': 'true' }, icon), h('span', {}, label))));
+
+  root.replaceChildren(
+    h('header', { class: 'topbar' }, h('div', { class: 'topbar-row' }, backBtn, title, picker)),
+    banner, pull, main, nav);
+  root.hidden = false;
+
+  function parseHash() {
+    const [path, qs] = location.hash.replace(/^#\/?/, '').split('?');
+    const route = VIEWS[path] ? path : 'home';
+    return { route, params: Object.fromEntries(new URLSearchParams(qs || '')) };
+  }
+
+  function navigate(route, params = {}, { replace = false, keepFocus = false } = {}) {
+    const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v != null && v !== '')).toString();
+    const hash = `#/${route}${qs ? `?${qs}` : ''}`;
+    if (replace) history.replaceState(null, '', hash);
+    else history.pushState(null, '', hash);
+    render({ keepFocus });
+  }
+
+  function setMonth(m) {
+    if (m > nowMonth()) return;
+    currentMonth = m;
+    render();
+  }
+
+  function setDemo(on) {
+    demo = Boolean(on);
+    banner.hidden = !demo;
+  }
+
+  async function render({ keepScroll = false, keepFocus = false } = {}) {
+    const seq = ++renderSeq;
+    const { route, params } = parseHash();
+    const view = VIEWS[route];
+    title.textContent = view.title;
+    picker.hidden = !view.usesMonth || Boolean(params.from || params.to);
+    monthText.textContent = monthLabel(currentMonth);
+    nextBtn.disabled = currentMonth >= nowMonth();
+    backBtn.hidden = !view.back;
+    backBtn.onclick = () => navigate(view.back);
+    nav.querySelectorAll('button').forEach(b => {
+      const active = b.dataset.route === (NAV_PARENT[route] || route);
+      if (active) b.setAttribute('aria-current', 'page');
+      else b.removeAttribute('aria-current');
+    });
+    const scroll = window.scrollY;
+    if (!keepScroll && !keepFocus) main.replaceChildren(skeleton(3));
+    const ctx = { month: currentMonth, params, navigate, setMonth, setDemo, refresh: opts => render(opts), lock };
+    try {
+      const out = await view.render(ctx);
+      if (seq !== renderSeq) return;
+      const focused = keepFocus ? document.activeElement : null;
+      const selStart = focused?.selectionStart;
+      main.replaceChildren(...[out].flat(Infinity).filter(Boolean));
+      if (keepFocus && focused?.type === 'search') {
+        const again = main.querySelector('input[type=search]');
+        again.focus();
+        again.setSelectionRange(selStart, selStart);
+      }
+      if (keepScroll) window.scrollTo(0, scroll);
+      else if (!keepFocus) window.scrollTo(0, 0);
+    } catch (err) {
+      if (seq !== renderSeq) return;
+      if (err.code === 'unauthorized' || err.code === 'locked') return onLocked();
+      main.replaceChildren(errorState(messageFor(err), () => render()));
+    }
+  }
+
+  // Swipe between months (RTL: swiping right goes forward in time)
+  let touch = null;
+  main.addEventListener('touchstart', e => {
+    const t = e.touches[0];
+    touch = { x: t.clientX, y: t.clientY, top: window.scrollY <= 0 };
+  }, { passive: true });
+  main.addEventListener('touchmove', e => {
+    if (!touch?.top) return;
+    const dy = e.touches[0].clientY - touch.y;
+    if (dy > 0) {
+      pull.style.setProperty('--pull', `${Math.min(dy, 120)}px`);
+      pull.classList.toggle('ready', dy > 80);
+    }
+  }, { passive: true });
+  main.addEventListener('touchend', e => {
+    if (!touch) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - touch.x;
+    const dy = t.clientY - touch.y;
+    const { route } = parseHash();
+    if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 1.8 && VIEWS[route].usesMonth && !e.target.closest('input, textarea, .chips, .account-strip')) {
+      setMonth(shiftMonth(currentMonth, dx > 0 ? 1 : -1));
+    } else if (touch.top && dy > 80 && Math.abs(dx) < 40) {
+      // Pull-to-refresh: reloads from the local store (bank sync arrives in Phase 3)
+      render({ keepScroll: true });
+    }
+    pull.style.removeProperty('--pull');
+    pull.classList.remove('ready');
+    touch = null;
+  });
+
+  window.addEventListener('popstate', () => render());
+  render();
+  return { render, setDemo };
+}

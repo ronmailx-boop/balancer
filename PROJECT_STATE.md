@@ -1,10 +1,10 @@
 # PROJECT_STATE — Balancer
 
 ## Current Focus
-Phase 1 (foundations) is built and tested in the cloud: 34 tests pass, and the setup/unlock/lock screens were checked in headless Chromium.
-Phase 1 runs on the phone (setup screen in Chrome).
-OPEN BLOCKER from Phase 0: Debian Chromium crashes on the phone even without Puppeteer (`--dump-dom` → SIGTRAP; dbus/netlink errors are noise). The real crash line was not visible yet.
+Phase 2 (UI in Demo Mode) is built: 46 tests pass, every screen checked in headless Chromium (light and dark).
+Browser for scraping (Phase 0 blocker): Termux-native Chromium works with --single-process; the full check (example.com + Leumi/Cal/Max login pages) was still running on Ron's phone.
 Next steps:
+0. Ron: `cd ~/balancer && git pull && bash scripts/start.sh`, then enable Demo Mode (empty home screen button or Settings) and look around.
 1. Path B (Termux-native Chromium) first run: Chromium child processes failed with "CANNOT LINK EXECUTABLE /proc/self/exe ... libtermux-exec.so" — Termux LD_PRELOAD. Removing LD_PRELOAD was WRONG: the Termux chromium-browser wrapper then fails with exit 126 (seen in run-checks-native). The singleProcess OK result came from a run that still had LD_PRELOAD. Fix: keep LD_PRELOAD, rely on --single-process. Re-run result: `--single-process` works (puppeteer singleProcess / noFeatures OK); multi-process still fails. Decision: path B = Termux-native Chromium + `--single-process` (auto on process.platform === 'android'). No Debian needed. Next: Ron runs `bash scripts/spike/run-checks-native.sh` again (network + Leumi/Cal/Max login pages). Phase 2 started in parallel (Ron approved).
 2. If B fails: `bash scripts/spike/diagnose.sh` again; the new output shows only the crash lines.
 3. Phase 2 (UI shell in Demo Mode) can start in parallel; the browser blocker must be solved before Phase 3 (UI shell in Demo Mode). The browser blocker must be solved before Phase 3.
@@ -17,6 +17,10 @@ Next steps:
 - Ron uses Chrome on Android. The UI (PWA) opens in his Chrome at http://127.0.0.1; the scraping uses a separate headless Chromium inside Termux/Debian (Puppeteer cannot drive the Chrome app, and keeping it separate avoids touching his personal browsing sessions).
 
 ## Decisions
+- Charts: hand-written SVG. Income #2a78d6 / expenses #eb6834 (dark #3987e5 / #d95926), magnitude bars brand purple; validated with the dataviz palette validator. Budget status = status color + icon + text label.
+- Money signs: transactions.charged_amount negative = expense; card_charges.amount positive = amount to be debited.
+- Installments count in their charge month (processed_date); card bills on the bank are 'transfer' (not counted twice).
+- Fixed categories at 100% of budget are "on plan" (no warning).
 - Server runs in native Termux Node (v26 there); only the scraper needs Debian + Chromium.
 - Browser: path B — Termux-native Chromium (`pkg install x11-repo chromium`) with `--single-process`; keep Termux's LD_PRELOAD (removing it → exit 126). Path A (Debian/proot Chromium) crashes on the S25 FE (SIGTRAP) and is dropped.
 - Library: `israeli-bank-scrapers-core` 6.12.2 (requires Node >= 22.22.2), with `executablePath`.
@@ -38,7 +42,16 @@ Next steps:
   - [x] Minimal Hebrew RTL screens: setup / unlock / home / change password (app/)
   - [x] Tests (tests/*.test.js)
   - [x] Ron checks it on the phone (setup screen renders in Chrome, dark mode)
-- [ ] Phase 2: UI shell in Demo Mode
+- [x] Phase 2: UI shell in Demo Mode (built and checked in headless Chromium, light + dark; waiting for Ron's check on the phone)
+  - [x] Demo data generator (shared/demo.js): Leumi + Max + Cal, 7 months, salary, rent, bills, subscriptions, installments, pending, USD, two billing dates
+  - [x] Demo isolation: separate in-memory DB, never saved; toggle in Settings; banner
+  - [x] Default Hebrew categories + starter rules for Israeli merchants (shared/categories.js), rules engine (shared/categorize.js)
+  - [x] Data API + read models (server/queries.js): overview, month, transactions (filters/search), update, budget (+copy), trends, projection, recurring/installments, CSV export
+  - [x] Screens: home, monthly, transactions (search, filters, day groups, detail sheet), budget, more, trends, recurring, accounts, settings
+  - [x] Charts in plain SVG (app/charts.js), colors validated for color-vision deficiency
+  - [x] Month picker + swipe, pull-to-refresh (reload), skeletons, toasts, bottom sheet
+  - [x] PWA: manifest, icons, service worker (offline shell; API never cached)
+  - [ ] Ron checks on the phone
 - [ ] Phase 3: Scraper integration
 - [ ] Phase 4: Intelligence
 - [ ] Phase 5: Polish and hardening

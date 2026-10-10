@@ -1,13 +1,16 @@
 import { api, session, messageFor } from './api.js';
+import { startShell } from './shell.js';
 
 const $ = id => document.getElementById(id);
-const VIEWS = ['loading', 'setup', 'unlock', 'home', 'offline'];
+const AUTH_VIEWS = ['loading', 'setup', 'unlock', 'offline'];
 let retryTimer = null;
+let shell = null;
 
-function show(view) {
-  for (const v of VIEWS) $(`view-${v}`).hidden = v !== view;
-  const first = $(`view-${view}`).querySelector('input');
-  if (first) first.focus();
+function showAuth(view) {
+  $('auth').hidden = false;
+  $('shell').hidden = true;
+  for (const v of AUTH_VIEWS) $(`view-${v}`).hidden = v !== view;
+  $(`view-${view}`).querySelector('input')?.focus();
 }
 
 function setError(id, text = '') {
@@ -25,18 +28,18 @@ async function route() {
   clearTimeout(retryTimer);
   try {
     const status = await api('status');
-    if (!status.initialized) return show('setup');
+    if (!status.initialized) return showAuth('setup');
     if (status.unlocked && session.token) {
       try {
-        await loadHome();
-        return show('home');
+        await api('info');
+        return openApp();
       } catch { /* token from an old session */ }
     }
     session.token = null;
-    show('unlock');
+    showAuth('unlock');
   } catch (e) {
     if (e.code === 'network') {
-      show('offline');
+      showAuth('offline');
       retryTimer = setTimeout(route, 3000); // reconnect by itself once start.sh is running
       return;
     }
@@ -45,13 +48,25 @@ async function route() {
   }
 }
 
-$('btn-retry').addEventListener('click', route);
-
-async function loadHome() {
-  const info = await api('info');
-  $('info-schema').textContent = info.schemaVersion;
-  $('info-idle').textContent = `${info.idleMinutes} דקות`;
+function openApp() {
+  $('auth').hidden = true;
+  if (!location.hash) history.replaceState(null, '', '#/home');
+  if (shell) shell.render();
+  else shell = startShell({ root: $('shell'), onLocked: lockedOut, lock });
+  $('shell').hidden = false;
 }
+
+function lockedOut() {
+  session.token = null;
+  showAuth('unlock');
+}
+
+async function lock() {
+  try { await api('lock', { method: 'POST', body: {} }); } catch { /* lock locally anyway */ }
+  lockedOut();
+}
+
+$('btn-retry').addEventListener('click', route);
 
 $('form-setup').addEventListener('submit', e => {
   e.preventDefault();
@@ -64,8 +79,7 @@ $('form-setup').addEventListener('submit', e => {
       const { token } = await api('setup', { method: 'POST', body: { password: pw } });
       session.token = token;
       e.target.reset();
-      await loadHome();
-      show('home');
+      openApp();
     } catch (err) {
       setError('setup-error', messageFor(err));
     }
@@ -80,8 +94,7 @@ $('form-unlock').addEventListener('submit', e => {
       const { token } = await api('unlock', { method: 'POST', body: { password: $('unlock-password').value } });
       session.token = token;
       e.target.reset();
-      await loadHome();
-      show('home');
+      openApp();
     } catch (err) {
       setError('unlock-error', messageFor(err));
       $('unlock-password').select();
@@ -89,34 +102,17 @@ $('form-unlock').addEventListener('submit', e => {
   });
 });
 
-$('btn-lock').addEventListener('click', async () => {
-  try { await api('lock', { method: 'POST', body: {} }); } catch { /* lock locally anyway */ }
-  session.token = null;
-  show('unlock');
-});
-
-$('form-password').addEventListener('submit', e => {
-  e.preventDefault();
-  setError('password-error');
-  setError('password-ok');
-  const newPassword = $('pw-new').value;
-  if ([...newPassword].length < 8) return setError('password-error', messageFor({ code: 'weak_password' }));
-  if (newPassword !== $('pw-confirm').value) return setError('password-error', 'הסיסמאות החדשות לא זהות.');
-  busy(e.target, async () => {
-    try {
-      await api('password', { method: 'POST', body: { oldPassword: $('pw-old').value, newPassword } });
-      e.target.reset();
-      setError('password-ok', 'הסיסמה הוחלפה.');
-    } catch (err) {
-      if (err.code === 'unauthorized' || err.code === 'locked') return route();
-      setError('password-error', messageFor(err));
-    }
-  });
-});
-
-// Re-check when coming back to the tab (the vault may have auto-locked)
+// Coming back to the tab: the vault may have auto-locked meanwhile
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && !$('view-home').hidden) route();
+  if (document.visibilityState === 'visible' && !$('shell').hidden) if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => { /* offline shell is optional */ });
+}
+
+route();
 });
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => { /* offline shell is optional */ });
+}
 
 route();

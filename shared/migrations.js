@@ -101,7 +101,7 @@ CREATE TABLE recurring_items (
 CREATE TABLE card_charges (
   account_id       TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
   charge_date      TEXT NOT NULL,            -- date the card bill hits the bank
-  amount           REAL NOT NULL,
+  amount           REAL NOT NULL,            -- positive: the amount that will be debited
   currency         TEXT NOT NULL DEFAULT 'ILS',
   PRIMARY KEY (account_id, charge_date)
 );

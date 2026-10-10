@@ -32,6 +32,7 @@ test('demo covers the required scenarios', async () => {
   assert.ok(count('SELECT COUNT(*) AS n FROM recurring_items') >= 6);
   const charges = Q.upcomingCharges(db, '2026-10-10');
   assert.deepEqual(charges.map(c => c.date), ['2026-11-02', '2026-11-10'], 'two cards, different billing dates');
+  assert.ok(charges.every(c => c.amount > 0), 'upcoming charges are positive amounts');
 });
 
 test('card bills are transfers and do not double count expenses', async () => {
@@ -99,6 +100,8 @@ test('trends, projection, recurring and installments', async () => {
   assert.equal(t.months.length, 6);
   assert.ok(t.averages.length > 5);
   assert.equal(typeof t.projection.projected, 'number');
+  const expected = t.projection.items.reduce((sum, i) => sum + i.amount, 0);
+  assert.ok(Math.abs(t.projection.today + expected - t.projection.projected) < 0.01, 'projection = today + listed items');
   const r = Q.recurringAndInstallments(db, '2026-10-10');
   assert.equal(r.installments.length, 2);
   const ikea = r.installments.find(i => i.description.includes('איקאה'));

@@ -6,11 +6,13 @@
   <meta name="theme-color" content="#7367f0">
   <title>Balancer</title>
   <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icon-192.png">
   <link rel="stylesheet" href="app.css">
   <script type="module" src="app.js"></script>
 </head>
 <body>
-  <main class="shell">
+  <div id="auth" class="auth">
     <header class="brand">
       <div class="logo" aria-hidden="true">₪</div>
       <h1>Balancer</h1>
@@ -45,31 +47,6 @@
       </form>
     </section>
 
-    <section id="view-home" class="card view" hidden>
-      <h2>הכספת פתוחה 🔓</h2>
-      <p class="hint">היסודות מוכנים. המסכים המלאים (יתרות, הוצאות, תקציב) יגיעו בשלב 2.</p>
-      <dl class="facts">
-        <dt>גרסת מבנה נתונים</dt><dd id="info-schema">—</dd>
-        <dt>נעילה אוטומטית אחרי</dt><dd id="info-idle">—</dd>
-      </dl>
-      <button type="button" class="btn" id="btn-lock">נעילה</button>
-
-      <details class="section">
-        <summary>החלפת סיסמת מאסטר</summary>
-        <form id="form-password" novalidate>
-          <label for="pw-old">סיסמה נוכחית</label>
-          <input id="pw-old" type="password" autocomplete="current-password" required>
-          <label for="pw-new">סיסמה חדשה</label>
-          <input id="pw-new" type="password" autocomplete="new-password" minlength="8" required>
-          <label for="pw-confirm">אימות סיסמה חדשה</label>
-          <input id="pw-confirm" type="password" autocomplete="new-password" minlength="8" required>
-          <p class="error" role="alert" id="password-error"></p>
-          <p class="success" role="status" id="password-ok"></p>
-          <button type="submit" class="btn primary">החלפה</button>
-        </form>
-      </details>
-    </section>
-
     <section id="view-offline" class="card view" hidden>
       <h2>השרת המקומי לא פועל</h2>
       <p class="hint">ב-Termux הרץ:</p>
@@ -79,6 +56,8 @@
     </section>
 
     <p class="error banner" role="alert" id="global-error" hidden></p>
-  </main>
+  </div>
+
+  <div id="shell" class="app" hidden></div>
 </body>
 </html>
