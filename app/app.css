@@ -204,8 +204,8 @@ input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px
 .hero p { margin: 0; }
 .hero-label { opacity: 0.9; }
 .hero-value { font-size: 2.2rem; font-weight: 800; letter-spacing: -0.5px; }
-/* Overdrawn: red on a white chip, so the red stays readable on the purple card */
-.hero p.hero-value.overdrawn { display: inline-block; margin: 4px 0; padding: 0 12px; border-radius: 14px; background: #fff; color: #c62828; }
+/* Overdrawn: light red like the "נשאר" figure; the label also says יתרת חובה, so it is not color alone */
+.hero p.hero-value.overdrawn { color: #ff8a8a; }
 .hero-sub { opacity: 0.8; font-size: 0.85rem; }
 .hero-link { margin-top: 8px; min-height: 36px; padding: 4px 12px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.45); background: rgba(255, 255, 255, 0.14); color: #fff; font: inherit; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
 
