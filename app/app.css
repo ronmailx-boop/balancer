@@ -210,11 +210,11 @@ input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px
 .hero-sub { color: var(--muted); font-size: 0.85rem; }
 .hero-link { margin-top: 8px; min-height: 36px; padding: 4px 12px; border-radius: 999px; border: 1px solid var(--primary); background: transparent; color: var(--primary); font: inherit; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
 
-.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.stat { display: flex; flex-direction: column; gap: 2px; background: var(--surface-2); border-radius: 12px; padding: 10px; min-width: 0; container-type: inline-size; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.stat { display: flex; flex-direction: column; gap: 2px; background: var(--surface-2); border-radius: 12px; padding: 10px 8px; min-width: 0; container-type: inline-size; }
 .stat-label { color: var(--muted); font-size: 0.8rem; }
 /* An amount never breaks across lines: it shrinks to the width of its box instead */
-.stat-value { font-weight: 800; font-size: clamp(0.55rem, 15cqi, 1.05rem); white-space: nowrap; }
+.stat-value { font-weight: 800; font-size: clamp(0.6rem, 20cqi, 1.3rem); white-space: nowrap; }
 .compare { margin: 10px 0 0; }
 
 .budget-line { margin-top: 14px; }

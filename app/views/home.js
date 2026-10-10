@@ -34,7 +34,7 @@ export async function render(ctx) {
     h('section', { class: 'hero' },
       h('p', { class: 'hero-label' }, o.balances.total < 0 ? 'יתרה בעו"ש · יתרת חובה' : 'יתרה בעו"ש'),
       h('p', { class: `hero-value ${o.balances.total < 0 ? 'overdrawn' : ''}` }, money(o.balances.total, { sign: o.balances.total < 0 })),
-      h('p', { class: 'hero-sub' }, `עודכן ${o.balances.accounts[0]?.lastSyncAt ? new Date(o.balances.accounts[0].lastSyncAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) : '—'}`),
+      h('p', { class: 'hero-sub' }, updatedLabel(o.balances.accounts)),
       bankCount > 1 && h('button', { type: 'button', class: 'hero-link', onclick: () => openBalancePicker(() => ctx.refresh({ keepScroll: true })) },
         o.balances.partial ? `לפי ${included.length} מתוך ${bankCount} חשבונות · שינוי` : `כל ${bankCount} החשבונות · בחירה`)),
 
@@ -98,6 +98,16 @@ async function openCharge(ctx, c) {
     res.items.length
       ? h('ul', { class: 'tx-list' }, res.items.map(t => txRow(t, () => { sheet.close(); openDetail(ctx, t, cats); })))
       : h('p', { class: 'muted' }, 'לא נמצא פירוט לחיוב הזה.')));
+}
+
+// "עודכן 10.10 בשעה 22:03" (the latest sync of any account)
+function updatedLabel(accounts) {
+  const last = accounts.map(a => a.lastSyncAt).filter(Boolean).sort().pop();
+  if (!last) return 'עוד לא סונכרן';
+  const d = new Date(last);
+  const date = d.toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' });
+  const time = d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+  return `עודכן ${date} בשעה ${time}`;
 }
 
 function stat(label, value, cls = '') {
