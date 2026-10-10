@@ -6,8 +6,10 @@ cd "$REPO/scripts/spike"
 export CHROME_PATH="$(command -v chromium-browser || command -v chromium)"
 termux-wake-lock 2>/dev/null || true
 {
-  echo "===== browser";  node launch-browser.mjs
-  for p in leumi visaCal max; do echo "===== probe $p"; node login-page-probe.mjs $p; done
+  # Optional: only the given providers, e.g. run-checks-native.sh visaCal
+  PROVIDERS="${*:-leumi visaCal max}"
+  [ $# -eq 0 ] && { echo "===== browser"; node launch-browser.mjs; }
+  for p in $PROVIDERS; do echo "===== probe $p"; node login-page-probe.mjs $p; done
 } 2>&1 | grep --line-buffered -v "CANNOT LINK\|needed or dlopened\|accessible for the namespace" | tee "$REPO/phase0-native-checks.txt"
 termux-wake-unlock 2>/dev/null || true
 echo

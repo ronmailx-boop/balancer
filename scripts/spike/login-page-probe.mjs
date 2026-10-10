@@ -13,6 +13,9 @@ const LOGIN_URLS = {
   discount: 'https://start.telebank.co.il/login/#/LOGIN_PAGE',
 };
 
+// Copied from israeli-bank-scrapers 6.12.x (scrapers/visa-cal.js, apiHeaders)
+const CAL_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36';
+
 const arg = process.argv[2] || 'max';
 const url = LOGIN_URLS[arg] || arg;
 if (!/^https:\/\//.test(url)) {
@@ -26,6 +29,10 @@ const browser = await puppeteer.launch({ executablePath: findChromium(), headles
 try {
   const page = await browser.newPage();
   await page.setViewport({ width: 1024, height: 768 });
+  // Same as the library does: hide "HeadlessChrome" (bot filters reject it).
+  // For Visa Cal the library sends a fixed desktop User-Agent, so the probe does too.
+  const ua = (await browser.userAgent()).replace('HeadlessChrome/', 'Chrome/');
+  await page.setUserAgent(arg === 'visaCal' ? CAL_UA : ua);
   const t0 = Date.now();
   await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
   await new Promise(r => setTimeout(r, 3000)); // let SPA login widgets render
