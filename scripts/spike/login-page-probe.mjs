@@ -1,12 +1,13 @@
 // Phase 0: opens a provider's public login page and checks that the login
 // form renders. It NEVER types or submits anything.
-// Usage: node login-page-probe.mjs max|visaCal|discount|<https url>
+// Usage: node login-page-probe.mjs leumi|max|visaCal|discount|<https url>
 import puppeteer from 'puppeteer-core';
 import { SCRAPERS } from 'israeli-bank-scrapers-core';
 import { findChromium, BROWSER_ARGS } from './browser-path.mjs';
 
 // Login URLs as used inside israeli-bank-scrapers 6.12.x
 const LOGIN_URLS = {
+  leumi: 'https://www.leumi.co.il/he',
   max: 'https://www.max.co.il/login',
   visaCal: 'https://www.cal-online.co.il/',
   discount: 'https://start.telebank.co.il/login/#/LOGIN_PAGE',

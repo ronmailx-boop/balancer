@@ -25,3 +25,4 @@ scraper-debug/
 debug/
 *.har
 *.log
+phase0-results.txt

@@ -101,7 +101,17 @@ Proposal:
 - Credentials: each connection's blob is encrypted separately with its own random IV, inside the already-encrypted DB.
 - Backup = the encrypted DB blob plus a header. Restore requires the master password.
 
-## 8. What I need from you
+## 8. Answers received (2026-10-10)
+
+- Samsung Galaxy S25 FE, Android 16: use Developer options → **Disable child process restrictions**.
+- First institutions: **Leumi**, **Visa Cal**, **Max**. All three log in with username + password.
+- SMS: none wanted, so we **keep a per-connection browser profile**. If a site still asks for a code, the connection is marked `otp_required` and nothing is retried.
+- A fresh Termux has no `git`. Use the bootstrap instead of the commands below:
+  ```bash
+  curl -fsSL https://raw.githubusercontent.com/ronmailx-boop/balancer/claude/new-session-dwvvzt/scripts/spike/bootstrap.sh -o b.sh && bash b.sh
+  ```
+
+## 9. Original questions
 
 1. **Run on the phone** (Termux from F-Droid or GitHub):
    ```bash
