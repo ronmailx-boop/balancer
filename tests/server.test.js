@@ -207,3 +207,48 @@ test('rejects oversized and malformed bodies', async t => {
   });
   assert.equal(bad, 400);
 });
+
+test('demo mode never touches the real database', async t => {
+  const s = await start();
+  t.after(s.close);
+  const { token } = (await s.req('POST', '/api/setup', { body: { password: PW } })).json;
+  let o = await s.req('GET', '/api/overview', { token });
+  assert.equal(o.json.demo, false);
+  assert.equal(o.json.hasData, false);
+  assert.ok((await s.req('GET', '/api/categories', { token })).json.length > 10, 'real vault gets default categories');
+
+  await s.req('POST', '/api/settings/demo', { token, body: { enabled: true } });
+  o = await s.req('GET', '/api/overview', { token });
+  assert.equal(o.json.demo, true);
+  assert.equal(o.json.balances.accounts.length, 3);
+  const tx = (await s.req('GET', '/api/transactions', { token })).json[0];
+  const upd = await s.req('POST', '/api/transactions/update', { token, body: { id: tx.id, notes: 'demo note' } });
+  assert.equal(upd.json.transaction.notes, 'demo note');
+
+  await s.req('POST', '/api/settings/demo', { token, body: { enabled: false } });
+  assert.equal(Q(s.vault.db, 'SELECT COUNT(*) AS n FROM transactions').n, 0);
+  assert.equal(Q(s.vault.db, 'SELECT COUNT(*) AS n FROM accounts').n, 0);
+  assert.equal((await s.req('GET', '/api/transactions', { token })).json.length, 0);
+});
+
+test('data routes require a session and validate input', async t => {
+  const s = await start();
+  t.after(s.close);
+  const { token } = (await s.req('POST', '/api/setup', { body: { password: PW } })).json;
+  for (const p of ['/api/overview', '/api/transactions', '/api/budget', '/api/trends', '/api/export.csv']) {
+    assert.equal((await s.req('GET', p)).status, 401, p);
+  }
+  assert.equal((await s.req('POST', '/api/budget', { token, body: { month: 'bad', items: [] } })).status, 400);
+  assert.equal((await s.req('POST', '/api/transactions/update', { token, body: { id: 'missing' } })).status, 404);
+  const csv = await s.req('GET', '/api/export.csv', { token });
+  assert.equal(csv.status, 200);
+  assert.match(csv.headers['content-type'], /text\/csv/);
+});
+
+function Q(db, sql) {
+  const stmt = db.prepare(sql);
+  stmt.step();
+  const row = stmt.getAsObject();
+  stmt.free();
+  return row;
+}
