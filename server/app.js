@@ -10,6 +10,7 @@ import { log } from './log.js';
 import * as Q from './queries.js';
 import { generateDemo, isoDate } from '../shared/demo.js';
 import { detectRecurring } from '../shared/recurring.js';
+import { takeAutoSyncSlot, autoSyncEnabled } from './autosync.js';
 import { seedCategories } from '../shared/categories.js';
 import { SyncManager, credentialAad, removeProfile, connectionsList } from './sync.js';
 import { providerById, providers } from '../scraper/providers.js';
@@ -99,6 +100,18 @@ export function createApp({ vault, appDir, port, idleMs = 5 * 60 * 1000, now = D
     } catch (e) {
       log('error', `recurring detection failed (${e.message})`);
     }
+  };
+  // Twice-daily automatic sync (07:00 / 19:00 slots), started when the app is opened.
+  // Returns true when a sync was started now.
+  const maybeAutoSync = () => {
+    if (!vault.unlocked || demoEnabled() || sync.status().running) return false;
+    const ids = takeAutoSyncSlot(vault.db, now());
+    if (ids === null) return false;
+    vault.save();
+    if (!ids.length) return false;
+    const { queued } = sync.request(ids);
+    if (queued.length) log('info', `auto sync started (${queued.length} connections)`);
+    return queued.length > 0;
   };
   const ensureSeeded = () => {
     if (Q.one(vault.db, 'SELECT COUNT(*) AS n FROM categories').n === 0) {
@@ -233,8 +246,9 @@ export function createApp({ vault, appDir, port, idleMs = 5 * 60 * 1000, now = D
     },
 
     'GET /api/overview': async ({ url }) => {
+      const autoSync = maybeAutoSync();
       const { db, demo: isDemo } = await data();
-      return { demo: isDemo, today: todayIso(), range: Q.monthRange(db), ...Q.overview(db, { month: monthParam(url, db), today: todayIso() }) };
+      return { demo: isDemo, autoSync, today: todayIso(), range: Q.monthRange(db), ...Q.overview(db, { month: monthParam(url, db), today: todayIso() }) };
     },
 
     'GET /api/month': async ({ url }) => {
@@ -281,7 +295,7 @@ export function createApp({ vault, appDir, port, idleMs = 5 * 60 * 1000, now = D
 
     'GET /api/prefs': async () => {
       const { db } = await data();
-      return { ...Q.prefs(db), idleMinutes: Math.round(idleLimit() / 60000), idleChoices: IDLE_CHOICES, today: todayIso(), currentMonth: Q.cycleMonth(todayIso(), Q.cycleDay(db)) };
+      return { ...Q.prefs(db), autoSync: autoSyncEnabled(vault.db), idleMinutes: Math.round(idleLimit() / 60000), idleChoices: IDLE_CHOICES, today: todayIso(), currentMonth: Q.cycleMonth(todayIso(), Q.cycleDay(db)) };
     },
 
     'POST /api/prefs': async ({ body }) => {
@@ -293,6 +307,10 @@ export function createApp({ vault, appDir, port, idleMs = 5 * 60 * 1000, now = D
         vault.db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('cycle_start_day', ?)", [String(d)]);
         vault.save();
         if (isDemo) db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('cycle_start_day', ?)", [String(d)]);
+      }
+      if (body.autoSync !== undefined) {
+        vault.db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('auto_sync', ?)", [body.autoSync ? '1' : '0']);
+        vault.save();
       }
       if (body.idleMinutes !== undefined) {
         const m = body.idleMinutes;

@@ -103,7 +103,7 @@ export function startShell({ root, onLocked, lock }) {
     });
     const scroll = window.scrollY;
     if (!keepScroll && !keepFocus) main.replaceChildren(skeleton(3));
-    const ctx = { month: currentMonth, cycleDay, params, navigate, setMonth, setDemo, setCycleDay, refresh: opts => render(opts), lock };
+    const ctx = { month: currentMonth, cycleDay, params, navigate, setMonth, setDemo, setCycleDay, watchSync, refresh: opts => render(opts), lock };
     try {
       const out = await view.render(ctx);
       if (seq !== renderSeq) return;
@@ -165,22 +165,27 @@ export function startShell({ root, onLocked, lock }) {
         return render({ keepScroll: true });
       }
       toast('מסנכרן… זה יכול לקחת כמה דקות');
-      clearInterval(syncWatch);
-      syncWatch = setInterval(async () => {
-        try {
-          const s = await api('sync/status');
-          if (s.running || s.queued.length) return;
-          clearInterval(syncWatch);
-          const failed = Object.values(s.results).filter(x => !x.ok).length;
-          toast(failed ? 'הסנכרון הסתיים עם שגיאות. פרטים במסך החשבונות.' : 'הסנכרון הסתיים');
-          render({ keepScroll: true });
-        } catch {
-          clearInterval(syncWatch);
-        }
-      }, 3000);
+      watchSync();
     } catch (err) {
       toast(messageFor(err));
     }
+  }
+
+  // Polls the sync status and refreshes the screen when it is done
+  function watchSync() {
+    clearInterval(syncWatch);
+    syncWatch = setInterval(async () => {
+      try {
+        const s = await api('sync/status');
+        if (s.running || s.queued.length) return;
+        clearInterval(syncWatch);
+        const failed = Object.values(s.results).filter(x => !x.ok).length;
+        toast(failed ? 'הסנכרון הסתיים עם שגיאות. פרטים במסך החשבונות.' : 'הסנכרון הסתיים');
+        render({ keepScroll: true });
+      } catch {
+        clearInterval(syncWatch);
+      }
+    }, 3000);
   }
 
   window.addEventListener('popstate', () => render());

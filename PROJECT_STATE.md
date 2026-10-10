@@ -14,6 +14,10 @@ After that the planned phases are complete; further work is by Ron's requests.
 - Removing LD_PRELOAD was wrong: the wrapper then exits with 126. Keep LD_PRELOAD.
 - Always hide "HeadlessChrome" in the User-Agent (the library does it; Cal's WAF rejects it).
 
+## Auto sync (2026-10-10, Ron's request)
+- Twice a day when the app is opened: a 07:00 slot and a 19:00 slot (Israel time; 00:00-06:59 belongs to the previous evening). server/autosync.js; triggered from GET /api/overview (home screen), only when unlocked and not in demo.
+- Each slot runs at most once even if it fails (settings.auto_sync_slot); connections synced by hand in the slot, or needing attention, are skipped. Toggle: Settings -> סנכרון אוטומטי (settings.auto_sync, default on).
+
 ## Launcher
 - The apps launcher (repo my-site, https://apps.vplusstudio.app/) has a balancer tile that opens http://127.0.0.1:8765/#/home (my-site PR #46, Ron confirmed it works). The tile's icon is a copy of app/icon-512.png kept in my-site (icons/balancer-512.png); if the icon changes, update it there too.
 

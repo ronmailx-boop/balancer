@@ -44,6 +44,21 @@ export async function render(ctx) {
     }
   });
 
+  // Automatic sync twice a day
+  const auto = h('input', { type: 'checkbox', id: 'auto-sync', role: 'switch', checked: prefs.autoSync });
+  auto.addEventListener('change', async () => {
+    auto.disabled = true;
+    try {
+      await api('prefs', { method: 'POST', body: { autoSync: auto.checked } });
+      toast(auto.checked ? 'סנכרון אוטומטי הופעל' : 'סנכרון אוטומטי כובה');
+    } catch (err) {
+      auto.checked = !auto.checked;
+      toast(messageFor(err));
+    } finally {
+      auto.disabled = false;
+    }
+  });
+
   // Auto-lock
   const idle = h('select', { id: 'idle-minutes' }, prefs.idleChoices.map(m => h('option', { value: m, selected: m === prefs.idleMinutes }, m === 1 ? 'דקה' : `${m} דקות`)));
   idle.addEventListener('change', async () => {
@@ -180,6 +195,10 @@ export async function render(ctx) {
     card(cardTitle('יתרה בעו"ש'),
       h('p', { class: 'muted' }, `מחושבת לפי ${balanceSummary()}.`),
       prefs.bankAccounts.length > 0 && h('button', { type: 'button', class: 'btn', onclick: () => openBalancePicker(() => ctx.refresh({ keepScroll: true })) }, 'בחירת חשבונות')),
+    card(cardTitle('סנכרון אוטומטי'),
+      h('label', { class: 'switch-row', for: 'auto-sync' },
+        h('span', {}, h('span', {}, 'פעמיים ביום, בפתיחת האפליקציה'), h('span', { class: 'muted small' }, 'פעם אחת מ-7:00 בבוקר ופעם אחת מ-19:00 בערב. אם כבר סנכרנת ידנית באותו חלון זמן, לא יסונכרן שוב.')),
+        auto)),
     card(cardTitle('מצב הדגמה'),
       h('label', { class: 'switch-row', for: 'demo-toggle' },
         h('span', {}, h('span', {}, 'הצגת נתונים לדוגמה'), h('span', { class: 'muted small' }, 'נתונים מומצאים בלבד. לא נשמרים ולא מתערבבים עם הנתונים האמיתיים.')),
