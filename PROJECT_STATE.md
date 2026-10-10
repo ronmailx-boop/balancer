@@ -1,9 +1,8 @@
 # PROJECT_STATE — Balancer
 
 ## Current Focus
-Phase 0 is waiting on the phone run. The first attempt failed because git was missing on a fresh Termux, so we added a one-command bootstrap:
-`curl -fsSL https://raw.githubusercontent.com/ronmailx-boop/balancer/claude/new-session-dwvvzt/scripts/spike/bootstrap.sh -o b.sh && bash b.sh`
-Next step: Ron runs it and pastes `~/balancer/phase0-results.txt`. Then Phase 1 starts.
+Phase 0 is complete: Ron ran the bootstrap on the phone (S25 FE, Android 16) on 2026-10-10 and reported all checks passed. Decision: GO.
+Next step: get Ron's approval for the Phase 1 plan, then build it. Optional: Ron pastes `~/balancer/phase0-results.txt` so the scrypt cost can be tuned to the phone's timing (default N=2^17).
 
 ## Ron's answers (2026-10-10)
 - Device: Samsung Galaxy S25 FE, Android 16 → phantom-process fix: the Developer options toggle was not found on his Samsung; run checks first, fall back to adb-over-wireless-debugging from Termux if Chromium gets killed (signal 9).
@@ -21,7 +20,7 @@ Next step: Ron runs it and pastes `~/balancer/phase0-results.txt`. Then Phase 1 
 
 ## Phases
 - [x] Phase 0: cloud checks (crypto, storage, Chromium launch, provider list), Termux setup script, report
-- [ ] Phase 0: run on the phone (Ron)
+- [x] Phase 0: run on the phone (Ron) — all checks passed
 - [ ] Phase 1: Foundations (scaffold, encrypted store, local server, schema)
 - [ ] Phase 2: UI shell in Demo Mode
 - [ ] Phase 3: Scraper integration
@@ -29,4 +28,5 @@ Next step: Ron runs it and pastes `~/balancer/phase0-results.txt`. Then Phase 1 
 - [ ] Phase 5: Polish and hardening
 
 ## Open questions for Ron
-1. Phone check output (`phase0-results.txt`)
+1. Approve the Phase 1 plan
+2. (Optional) `phase0-results.txt` numbers for scrypt tuning
