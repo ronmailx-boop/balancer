@@ -1,13 +1,8 @@
 # PROJECT_STATE — Balancer
 
 ## Current Focus
-Phase 4 (intelligence) is built: 78 tests pass, screens checked in headless Chromium with demo data.
-Next: Ron pulls, restarts (migration v2 runs on unlock), and checks with his real data:
-1. עוד -> הוראות קבע ותשלומים: are the detected recurring items right? Mark wrong ones "זה לא חיוב קבוע".
-2. Home -> תובנות and התראות.
-3. A transaction -> "פיצול לכמה קטגוריות".
-4. עוד -> קטגוריות וחוקים: add a rule.
-Then Phase 5 (polish and hardening: encrypted backup/restore, data wipe, auto-lock setting, performance, accessibility, security review, docs) after Ron approves.
+Phase 4 is done and verified on the phone with real data (2026-10-10).
+Next: Phase 5 (polish and hardening) starts only after Ron approves it.
 
 ## Browser history (Phase 0)
 - Path A (proot Debian Chromium) crashes on the S25 FE with SIGTRAP even without Puppeteer. Dropped.
@@ -68,7 +63,7 @@ Then Phase 5 (polish and hardening: encrypted backup/restore, data wipe, auto-lo
   - [x] UI: accounts screen (add, edit, delete, sync now, progress, Hebrew errors), pull-to-refresh on home syncs all
   - [x] Tests with recorded-shape fake fixtures (tests/fixtures/scrapes.js)
   - [x] Ron: first real sync of Leumi, Cal and Max (2026-10-10; Max needed the unknown-plan patch)
-- [x] Phase 4: Intelligence (built and tested in the cloud with demo data; waiting for Ron's check on real data)
+- [x] Phase 4: Intelligence (verified on the phone with real data)
   - [x] Migration v2: transaction_splits; recurring_items gets merchant_key, account_id, category_id, last/previous amount, occurrences, source
   - [x] Recurring detection (shared/recurring.js): per account + merchant key, weekly/monthly/bimonthly/yearly, same-day check, amount spread; runs after sync, on unlock, in demo; "not recurring" kept in settings.recurring_dismissed
   - [x] Alerts: price rise (fixed-price items only), expected charge/income missing, possible double charge; critical first
@@ -76,7 +71,7 @@ Then Phase 5 (polish and hardening: encrypted backup/restore, data wipe, auto-lo
   - [x] Categories and rules screen (#/categories): custom categories (u- ids), built-in type locked, user rules add/delete with re-categorization
   - [x] Insights on home: variable-spending pace vs 3-cycle average, categories over average, monthly recurring total
   - [x] Recurring screen rebuilt on real detection (income / expenses / stopped, detail sheet, dismiss)
-  - [ ] Ron checks on the phone with real data
+  - [x] Ron checks on the phone with real data (2026-10-10: all works)
 - [ ] Phase 5: Polish and hardening
 
 ## Open questions for Ron
