@@ -6,7 +6,7 @@ Phase 3 verified on the phone (Leumi, Cal, Max). Ron's follow-up requests, built
   budget, trends, alerts and projection use it (settings key cycle_start_day; Q.monthBounds(month, day), Q.cycleMonth).
 - Bank balance from chosen accounts: tap the balance on Home, or Settings -> "יתרה בעו״ש" (key balance_accounts; [] = all).
 - Card bill breakdown: tap a row in "חיובי אשראי קרובים" -> sheet with the card's transactions charged on that date (GET /api/card-charge).
-Next: Ron pulls, sets the start day to 10, picks the balance accounts, checks the bill breakdowns and numbers.
+Ron confirmed on the phone (2026-10-10): all three work.
 Phase 4 starts only after Ron approves it.
 
 ## Browser history (Phase 0)
