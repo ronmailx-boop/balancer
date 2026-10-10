@@ -7,6 +7,12 @@ URL="http://127.0.0.1:$PORT/"
 
 [ -d node_modules/sql.js ] || bash scripts/install.sh
 
+# Already running (e.g. in another Termux session): just open it
+if curl -fsS -o /dev/null "${URL}api/status" 2>/dev/null; then
+  termux-open-url "$URL" 2>/dev/null || echo "Balancer is already running: open $URL in Chrome"
+  exit 0
+fi
+
 termux-wake-lock 2>/dev/null || true
 trap 'termux-wake-unlock 2>/dev/null || true' EXIT
 

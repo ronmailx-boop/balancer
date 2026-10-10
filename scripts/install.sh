@@ -19,5 +19,14 @@ node scripts/patch-scrapers.mjs
 git config core.hooksPath .githooks
 mkdir -p data && chmod 700 data
 
+# Shortcuts (Termux only): the `balancer` command, and a home-screen icon via the Termux:Widget app
+if [ -n "${PREFIX:-}" ] && [ -d "$PREFIX/bin" ] && [[ "$PREFIX" == *com.termux* ]]; then
+  chmod +x scripts/balancer.sh scripts/start.sh
+  ln -sf "$PWD/scripts/balancer.sh" "$PREFIX/bin/balancer"
+  mkdir -p "$HOME/.shortcuts"
+  printf '#!/data/data/com.termux/files/usr/bin/bash\nexec bash %s/scripts/start.sh\n' "$PWD" > "$HOME/.shortcuts/Balancer"
+  chmod 700 "$HOME/.shortcuts/Balancer"
+fi
+
 echo
-echo "Installed. Start with: bash scripts/start.sh"
+echo "Installed. Start with: balancer   (update with: balancer update)"

@@ -84,7 +84,10 @@ export function startShell({ root, onLocked, lock }) {
     const { route, params } = parseHash();
     const view = VIEWS[route];
     // A sheet belongs to the screen that opened it
-    if (route !== lastRoute) document.querySelectorAll('.sheet-overlay').forEach(el => el.remove());
+    if (route !== lastRoute) {
+      document.querySelectorAll('.sheet-overlay').forEach(el => el.remove());
+      root.inert = false;
+    }
     lastRoute = route;
     title.textContent = view.title;
     picker.hidden = !view.usesMonth || Boolean(params.from || params.to);

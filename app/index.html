@@ -35,6 +35,21 @@
         <p class="error" role="alert" id="setup-error"></p>
         <button type="submit" class="btn primary">יצירת הכספת</button>
       </form>
+      <button type="button" class="btn ghost" id="btn-show-restore">יש לי קובץ גיבוי: שחזור</button>
+    </section>
+
+    <section id="view-restore" class="card view" hidden>
+      <h2>שחזור מגיבוי</h2>
+      <p class="hint">בוחרים את קובץ הגיבוי שהורדת מההגדרות, ומזינים את סיסמת המאסטר שהייתה בשימוש כשהגיבוי נוצר.</p>
+      <form id="form-restore" novalidate>
+        <label for="restore-file">קובץ גיבוי</label>
+        <input id="restore-file" type="file" accept=".json,application/json" required>
+        <label for="restore-password">סיסמת המאסטר של הגיבוי</label>
+        <input id="restore-password" type="password" autocomplete="current-password" required>
+        <p class="error" role="alert" id="restore-error"></p>
+        <button type="submit" class="btn primary">שחזור</button>
+      </form>
+      <button type="button" class="btn ghost" id="btn-cancel-restore">חזרה</button>
     </section>
 
     <section id="view-unlock" class="card view" hidden>

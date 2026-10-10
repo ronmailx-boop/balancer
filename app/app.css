@@ -104,6 +104,7 @@ input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px
 }
 .btn.primary { background: var(--gradient); color: #fff; border: none; box-shadow: 0 6px 16px rgba(115, 103, 240, 0.3); }
 .btn:disabled { opacity: 0.6; cursor: progress; }
+.btn.ghost { border-color: transparent; background: transparent; color: var(--primary); margin-top: 8px; }
 
 .error { color: var(--danger); min-height: 1.2em; margin: 6px 0 0; font-size: 0.92rem; }
 .success { color: var(--success); min-height: 0; margin: 6px 0 0; font-size: 0.92rem; }
@@ -203,6 +204,8 @@ input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px
 .hero p { margin: 0; }
 .hero-label { opacity: 0.9; }
 .hero-value { font-size: 2.2rem; font-weight: 800; letter-spacing: -0.5px; }
+/* Overdrawn: red on a white chip, so the red stays readable on the purple card */
+.hero p.hero-value.overdrawn { display: inline-block; margin: 4px 0; padding: 0 12px; border-radius: 14px; background: #fff; color: #c62828; }
 .hero-sub { opacity: 0.8; font-size: 0.85rem; }
 .hero-link { margin-top: 8px; min-height: 36px; padding: 4px 12px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.45); background: rgba(255, 255, 255, 0.14); color: #fff; font: inherit; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
 
@@ -434,3 +437,4 @@ form .pair > div { display: flex; flex-direction: column; gap: 6px; min-width: 0
 .insight { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); }
 .insight > span:nth-child(2) { flex: 1; }
 .insight-icon { font-size: 1.2rem; }
+.card > .btn + .btn, .card > .btn + details { margin-top: 10px; }

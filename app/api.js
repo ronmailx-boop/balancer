@@ -49,6 +49,8 @@ export function messageFor(err) {
     case 'bad_request': return 'הנתונים שנשלחו לא תקינים.';
     case 'name_taken': return 'כבר קיימת קטגוריה בשם הזה.';
     case 'bad_rule': return 'החוק לא תקין. יש למלא טקסט לחיפוש ולבחור קטגוריה.';
+    case 'bad_backup': return 'הקובץ אינו גיבוי תקין של Balancer, או שהוא פגום.';
+    case 'too_large': return 'הקובץ גדול מדי.';
     case 'corrupt': return 'קובץ הנתונים פגום או חסר. אפשר לשחזר מגיבוי (יתווסף בהמשך).';
     case 'unauthorized':
     case 'locked': return 'הכספת ננעלה. יש להזין סיסמה שוב.';

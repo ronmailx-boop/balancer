@@ -132,4 +132,13 @@ ALTER TABLE recurring_items ADD COLUMN occurrences INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE recurring_items ADD COLUMN source TEXT NOT NULL DEFAULT 'auto';
 `,
   },
+  {
+    version: 3,
+    name: 'indexes for large histories',
+    sql: `
+CREATE INDEX idx_tx_processed ON transactions(processed_date);
+CREATE INDEX idx_tx_account_processed ON transactions(account_id, processed_date);
+CREATE INDEX idx_tx_override ON transactions(user_category_override);
+`,
+  },
 ];

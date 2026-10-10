@@ -16,16 +16,16 @@
 ## Local server
 - Listens on `127.0.0.1` only.
 - The `Host` header must be `127.0.0.1:<port>` or `localhost:<port>` (blocks DNS rebinding).
-- API is same-origin only: a foreign `Origin` or `Sec-Fetch-Site: cross-site` gets 403, and no CORS headers are ever sent. POST bodies must be JSON (blocks plain HTML form CSRF). Bodies are capped at 64 KB.
+- API is same-origin only: a foreign `Origin` or `Sec-Fetch-Site: cross-site` gets 403, and no CORS headers are ever sent. POST bodies must be JSON (blocks plain HTML form CSRF). Bodies are capped at 64 KB (80 MB only for a backup restore).
 - Each unlock creates a random 256-bit session token; only its SHA-256 is kept and it is compared in constant time. Lock, auto-lock and a new unlock all invalidate it. The PWA keeps it in `sessionStorage`.
 - Unlock is throttled: after the n-th consecutive failure the next attempt waits 2^(n-1) s (max 15 min), even with the correct password. Only one unlock runs at a time.
-- Auto-lock after 5 minutes without an authenticated request (`BALANCER_IDLE_MINUTES`).
+- Auto-lock after a period without an authenticated request: the user picks 1–60 minutes in Settings (default 5, or `BALANCER_IDLE_MINUTES`).
 - Strict CSP (`default-src 'self'`, no inline scripts or styles, no external hosts), `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, `nosniff`, COOP/CORP same-origin, restrictive `Permissions-Policy`. API responses are `no-store`.
 
 ## Hygiene
 - Dev logs are English, never include request bodies, and pass metadata through `redact()` (secret-looking keys removed, digit runs masked to the last 4).
 - `scripts/secret-scan.mjs` runs as a pre-commit hook. It blocks data/backup/key files, common token formats, hard-coded passwords, and Luhn-valid card numbers.
-- Only one runtime dependency (`sql.js`), pinned.
+- Three runtime dependencies, pinned exactly: `sql.js`, `israeli-bank-scrapers-core`, `puppeteer-core` (see README).
 
 ## Bank connections (Phase 3)
 - Credentials are validated against the provider's own fields, then sealed with AES-256-GCM under the data key, with the AAD `balancer:credentials:<connection id>`, inside the already encrypted database. The API never returns them, and they are never logged.
@@ -38,3 +38,9 @@
 - Only the error type is logged. `BALANCER_SCRAPER_DEBUG=1` adds a short message, with digit runs masked.
 - A result that arrives after the vault locked is discarded.
 - Demo Mode cannot add or sync real connections.
+
+## Backup, restore and wipe (Phase 5)
+- **Backup** (Settings, user-initiated only, never uploaded anywhere): a JSON file with the vault header (KDF params, salt, wrapped data key) and `db.enc` exactly as on disk. Nothing in it is in clear; opening it needs the master password that was in use when it was made. The bank credentials inside stay sealed.
+- **Restore**: allowed without a session only when no vault exists yet (fresh install / new phone); over an existing vault it needs the current session. The backup's password must decrypt it completely, in memory, before anything on disk is replaced; a wrong password or damaged file changes nothing. Wrong passwords count toward the unlock backoff.
+- **Wipe**: needs the master password (same backoff), then deletes `vault.json`, `db.enc` and all browser profiles, and ends the session.
+- If the master password is forgotten there is no recovery: delete `~/balancer/data` in Termux and start over (or restore a backup whose password you know).

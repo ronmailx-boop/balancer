@@ -1,8 +1,12 @@
 # PROJECT_STATE — Balancer
 
 ## Current Focus
-Phase 4 is done and verified on the phone with real data (2026-10-10).
-Next: Phase 5 (polish and hardening) starts only after Ron approves it.
+Phase 5 (polish and hardening) is built: 82 tests pass, screens checked in headless Chromium.
+Next: Ron runs `cd ~/balancer && git pull && bash scripts/install.sh` once (installs the `balancer` command), then:
+1. Settings -> גיבוי ושחזור -> download a backup and save it off the phone.
+2. Optional: Termux:Widget app -> Balancer icon on the home screen.
+3. Settings -> auto-lock minutes.
+After that the planned phases are complete; further work is by Ron's requests.
 
 ## Browser history (Phase 0)
 - Path A (proot Debian Chromium) crashes on the S25 FE with SIGTRAP even without Puppeteer. Dropped.
@@ -72,7 +76,16 @@ Next: Phase 5 (polish and hardening) starts only after Ron approves it.
   - [x] Insights on home: variable-spending pace vs 3-cycle average, categories over average, monthly recurring total
   - [x] Recurring screen rebuilt on real detection (income / expenses / stopped, detail sheet, dismiss)
   - [x] Ron checks on the phone with real data (2026-10-10: all works)
-- [ ] Phase 5: Polish and hardening
+- [x] Phase 5: Polish and hardening (built and tested in the cloud; waiting for Ron's check on the phone)
+  - [x] Overdrawn bank balance shown in red (white chip on the purple card), negative account balances red
+  - [x] Encrypted backup download, restore (fresh install or Settings), full wipe with password; restore/wipe share the unlock backoff
+  - [x] Auto-lock minutes in Settings (1-60, settings.idle_minutes)
+  - [x] `balancer` / `balancer update` command and a Termux:Widget home-screen shortcut (install.sh); start.sh just opens the app if it is already running
+  - [x] Performance: migration v3 indexes, trends no longer recomputes per category; perf test with ~25k transactions
+  - [x] Accessibility: page behind a sheet is inert
+  - [x] Fixed: visibilitychange handler re-registered the service worker instead of re-checking the lock
+  - [x] Security review (docs/security-review.md), security.md and README updated; backups blocked by .gitignore and the secret scan
+  - [ ] Ron checks on the phone
 
 ## Open questions for Ron
 1. Output of scripts/spike/diagnose.sh

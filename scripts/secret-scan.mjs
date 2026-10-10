@@ -15,6 +15,7 @@ const FORBIDDEN_FILES = [
   /\.(db|sqlite3?|enc|pem|key|p12|har)$/i,
   /(^|\/)vault\.json$/,
   /\.balancer-backup$/,
+  /(^|\/)balancer-backup-[^/]*\.json$/,
   /(^|\/)(screenshots|scraper-debug)\//,
 ];
 

@@ -593,16 +593,15 @@ export function trends(db, { months = 6, today }) {
   }
   // Average per category over the complete months only
   const complete = list.slice(0, -1);
+  const byMonth = complete.map(({ month }) => new Map(categoryBreakdown(db, month).map(c => [c.id, c])));
   const sums = {};
-  for (const { month } of complete) {
-    for (const c of categoryBreakdown(db, month)) {
+  for (const breakdown of byMonth) {
+    for (const c of breakdown.values()) {
       sums[c.id] ??= { id: c.id, name: c.name, icon: c.icon, total: 0, months: [] };
       sums[c.id].total += c.amount;
     }
   }
-  for (const s of Object.values(sums)) {
-    s.months = complete.map(({ month }) => r2(categoryBreakdown(db, month).find(c => c.id === s.id)?.amount || 0));
-  }
+  for (const s of Object.values(sums)) s.months = byMonth.map(b => r2(b.get(s.id)?.amount || 0));
   const averages = Object.values(sums)
     .map(s => ({ id: s.id, name: s.name, icon: s.icon, average: r2(s.total / Math.max(complete.length, 1)), months: s.months }))
     .sort((a, b) => b.average - a.average);

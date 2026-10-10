@@ -267,3 +267,51 @@ test('prefs: cycle day and balance accounts are validated and saved', async t =>
   assert.equal((await s.req('GET', '/api/card-charge?account=x&date=bad', { token })).status, 400);
   assert.equal((await s.req('GET', '/api/card-charge?account=x&date=2026-10-10', { token })).status, 404);
 });
+
+test('backup -> restore on a fresh install, wrong password changes nothing', async t => {
+  const a = await start();
+  t.after(a.close);
+  const { token } = (await a.req('POST', '/api/setup', { body: { password: PW } })).json;
+  await a.req('POST', '/api/prefs', { token, body: { cycleDay: 10 } });
+  const file = await a.req('GET', '/api/backup', { token });
+  assert.equal(file.status, 200);
+  assert.match(file.headers['content-disposition'], /balancer-backup-.*\.json/);
+  const backup = JSON.parse(file.raw);
+  assert.equal(backup.format, 'balancer-backup');
+  assert.ok(!file.raw.includes(PW), 'no password in the file');
+
+  const b = await start();
+  t.after(b.close);
+  const bad = await b.req('POST', '/api/restore', { body: { backup, password: 'wrong-password-9' } });
+  assert.equal(bad.status, 401);
+  assert.equal((await b.req('GET', '/api/status')).json.initialized, false, 'nothing written');
+  b.clock.t += 5000; // past the unlock backoff
+  assert.equal((await b.req('POST', '/api/restore', { body: { backup: { format: 'x' }, password: PW } })).json.error, 'bad_backup');
+  const ok = await b.req('POST', '/api/restore', { body: { backup, password: PW } });
+  assert.equal(ok.status, 200);
+  assert.equal((await b.req('GET', '/api/prefs', { token: ok.json.token })).json.cycleDay, 10, 'data came back');
+  // Over an existing vault, restore needs a session
+  assert.equal((await b.req('POST', '/api/restore', { body: { backup, password: PW } })).status, 401);
+});
+
+test('wipe needs the password and removes the vault', async t => {
+  const s = await start();
+  t.after(s.close);
+  const { token } = (await s.req('POST', '/api/setup', { body: { password: PW } })).json;
+  assert.equal((await s.req('POST', '/api/wipe', { token, body: { password: 'wrong-password-9' } })).status, 401);
+  assert.equal((await s.req('GET', '/api/status')).json.initialized, true);
+  s.clock.t += 5000; // past the backoff
+  assert.equal((await s.req('POST', '/api/wipe', { token, body: { password: PW } })).status, 200);
+  assert.deepEqual((await s.req('GET', '/api/status')).json, { initialized: false, unlocked: false, retryAfterSec: 0 });
+});
+
+test('auto-lock follows the user setting', async t => {
+  const s = await start();
+  t.after(s.close);
+  const { token } = (await s.req('POST', '/api/setup', { body: { password: PW } })).json;
+  assert.equal((await s.req('POST', '/api/prefs', { token, body: { idleMinutes: 7 } })).status, 400);
+  assert.equal((await s.req('POST', '/api/prefs', { token, body: { idleMinutes: 1 } })).status, 200);
+  assert.equal((await s.req('GET', '/api/info', { token })).json.idleMinutes, 1);
+  s.clock.t += 2 * 60 * 1000;
+  assert.equal((await s.req('GET', '/api/info', { token })).status, 401);
+});

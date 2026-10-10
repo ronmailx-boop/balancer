@@ -28,8 +28,8 @@ export async function render(ctx) {
 
   return [
     h('section', { class: 'hero' },
-      h('p', { class: 'hero-label' }, 'יתרה בעו"ש'),
-      h('p', { class: 'hero-value' }, money(o.balances.total)),
+      h('p', { class: 'hero-label' }, o.balances.total < 0 ? 'יתרה בעו"ש · יתרת חובה' : 'יתרה בעו"ש'),
+      h('p', { class: `hero-value ${o.balances.total < 0 ? 'overdrawn' : ''}` }, money(o.balances.total, { sign: o.balances.total < 0 })),
       h('p', { class: 'hero-sub' }, `עודכן ${o.balances.accounts[0]?.lastSyncAt ? new Date(o.balances.accounts[0].lastSyncAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) : '—'}`),
       bankCount > 1 && h('button', { type: 'button', class: 'hero-link', onclick: () => openBalancePicker(() => ctx.refresh({ keepScroll: true })) },
         o.balances.partial ? `לפי ${included.length} מתוך ${bankCount} חשבונות · שינוי` : `כל ${bankCount} החשבונות · בחירה`)),
@@ -70,7 +70,7 @@ export async function render(ctx) {
       h('div', { class: 'account-strip' }, o.balances.accounts.map(a => h('div', { class: `account-card ${a.type}` },
         h('span', { class: 'account-name' }, a.name),
         h('span', { class: 'account-num' }, `••${a.masked}`),
-        h('span', { class: 'account-balance' }, a.type === 'card' ? money(-a.balance) : money(a.balance)),
+        h('span', { class: `account-balance ${a.type !== 'card' && a.balance < 0 ? 'neg' : ''}` }, a.type === 'card' ? money(-a.balance) : money(a.balance, { sign: a.balance < 0 })),
         h('span', { class: 'muted small' }, a.type === 'card' ? 'חיוב הבא' : 'יתרה'))))),
 
     o.topCategories.length > 0 && card(cardTitle('הוצאות מובילות', h('button', { class: 'link', type: 'button', onclick: () => ctx.navigate('month') }, 'לכל הקטגוריות')),

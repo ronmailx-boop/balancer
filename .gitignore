@@ -10,6 +10,7 @@ data/
 *.bak
 backups/
 *.balancer-backup
+balancer-backup-*.json
 
 # Secrets and keys
 .env

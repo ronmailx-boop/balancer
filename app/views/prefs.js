@@ -13,7 +13,7 @@ export async function openBalancePicker(onSaved) {
   const boxes = p.bankAccounts.map((a, i) => {
     const box = h('input', { type: 'checkbox', id: `bal-${i}`, value: a.id, checked: a.included });
     return h('label', { class: 'check balance-pick', for: `bal-${i}` }, box,
-      h('span', { class: 'list-main' }, h('span', {}, accountLabel(a.name, a.masked)), h('span', { class: 'muted small' }, money(a.balance))));
+      h('span', { class: 'list-main' }, h('span', {}, accountLabel(a.name, a.masked)), h('span', { class: `small ${a.balance < 0 ? 'neg' : 'muted'}` }, money(a.balance, { sign: a.balance < 0 }))));
   });
   const error = h('p', { class: 'error', role: 'alert' });
   const save = h('button', { type: 'submit', class: 'btn primary' }, 'שמירה');

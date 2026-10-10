@@ -13,6 +13,7 @@ import { openDatabase, migrate } from './db.js';
 const HEADER_VERSION = 1;
 const AAD_KEY = 'balancer:data-key:v1';
 const AAD_DB = 'balancer:db:v1';
+const BACKUP_FORMAT = 'balancer-backup';
 export const MIN_PASSWORD_LENGTH = 8;
 
 export class VaultError extends Error {
@@ -106,6 +107,58 @@ export class Vault {
     kek.fill(0);
     dataKey.fill(0);
     writeFileAtomic(this.headerPath, JSON.stringify(next, null, 2));
+  }
+
+  // Check the master password without changing anything (wipe, restore over an existing vault)
+  async verifyPassword(password) {
+    const key = await this.#unwrap(this.#readHeader(), password);
+    key.fill(0);
+  }
+
+  // Encrypted backup: the header (salt + wrapped key, no secrets in clear) and the encrypted
+  // database, exactly as on disk. Restoring it needs the master password it was made with.
+  exportBackup() {
+    this.save();
+    return {
+      format: BACKUP_FORMAT,
+      version: 1,
+      createdAt: new Date().toISOString(),
+      header: this.#readHeader(),
+      db: fs.readFileSync(this.dbPath).toString('base64'),
+    };
+  }
+
+  // Replaces this vault with a backup, after proving the password opens it. Leaves the vault
+  // unlocked with the restored data. Nothing on disk changes if the backup or password is wrong.
+  async restoreBackup(backup, password) {
+    if (!backup || backup.format !== BACKUP_FORMAT || backup.version !== 1 || typeof backup.db !== 'string') throw new VaultError('bad_backup');
+    const header = backup.header;
+    if (!header || header.version !== HEADER_VERSION || !header.kdf?.salt || !header.wrappedKey) throw new VaultError('bad_backup');
+    const blob = Buffer.from(backup.db, 'base64');
+    const dataKey = await this.#unwrap(header, password);
+    let db;
+    try {
+      const bytes = decrypt(dataKey, unpackBlob(blob), AAD_DB);
+      db = await openDatabase(bytes);
+      db.exec('SELECT COUNT(*) FROM settings');
+    } catch {
+      dataKey.fill(0);
+      db?.close();
+      throw new VaultError('bad_backup');
+    }
+    this.lock();
+    ensurePrivateDir(this.#dir);
+    writeFileAtomic(this.dbPath, blob);
+    writeFileAtomic(this.headerPath, JSON.stringify(header, null, 2));
+    this.#dataKey = dataKey;
+    this.#db = db;
+    if (migrate(db) > 0) this.save();
+  }
+
+  // Deletes the vault files. The caller checks the password first.
+  destroy() {
+    this.lock();
+    for (const f of [this.dbPath, this.headerPath]) fs.rmSync(f, { force: true });
   }
 
   // Persist the in-memory database. Call after every write.

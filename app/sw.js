@@ -1,8 +1,8 @@
 // Offline shell: the app's static files are cached so it opens even when the local server
 // is stopped (it then shows how to start it). API calls are never cached.
-const CACHE = 'balancer-shell-v2';
+const CACHE = 'balancer-shell-v3';
 const SHELL = [
-  './', 'index.html', 'app.css', 'app.js', 'api.js', 'ui.js', 'charts.js', 'shell.js',
+  './', 'index.html', 'app.css', 'app.js', 'api.js', 'backup.js', 'ui.js', 'charts.js', 'shell.js',
   'views/home.js', 'views/month.js', 'views/transactions.js', 'views/budget.js', 'views/more.js',
   'views/trends.js', 'views/recurring.js', 'views/accounts.js', 'views/settings.js', 'views/prefs.js', 'views/categories.js',
   'manifest.webmanifest', 'icon.svg', 'icon-192.png',

@@ -16,6 +16,8 @@ import { providerById, providers } from '../scraper/providers.js';
 
 export const HOST = '127.0.0.1';
 const MAX_BODY = 64 * 1024;
+const IDLE_CHOICES = [1, 2, 5, 10, 15, 30, 60];
+const MAX_BACKUP_BODY = 80 * 1024 * 1024; // restore uploads the whole encrypted database
 
 const CSP = [
   "default-src 'self'",
@@ -138,8 +140,13 @@ export function createApp({ vault, appDir, port, idleMs = 5 * 60 * 1000, now = D
   };
 
   // Auto-lock after inactivity
+  // The user's auto-lock setting (Settings), or the server default
+  const idleLimit = () => {
+    const v = vault.unlocked ? Number(Q.one(vault.db, "SELECT value FROM settings WHERE key = 'idle_minutes'")?.value) : NaN;
+    return Number.isInteger(v) && v >= 1 && v <= 60 ? v * 60 * 1000 : idleMs;
+  };
   const checkIdle = () => {
-    if (vault.unlocked && now() - lastActivity > idleMs) {
+    if (vault.unlocked && now() - lastActivity > idleLimit()) {
       log('info', 'auto-lock after inactivity');
       endSession();
     }
@@ -213,7 +220,7 @@ export function createApp({ vault, appDir, port, idleMs = 5 * 60 * 1000, now = D
 
     'GET /api/info': async () => ({
       schemaVersion: schemaVersion(vault.db),
-      idleMinutes: Math.round(idleMs / 60000),
+      idleMinutes: Math.round(idleLimit() / 60000),
       demo: demoEnabled(),
       today: todayIso(),
     }),
@@ -274,7 +281,7 @@ export function createApp({ vault, appDir, port, idleMs = 5 * 60 * 1000, now = D
 
     'GET /api/prefs': async () => {
       const { db } = await data();
-      return { ...Q.prefs(db), today: todayIso(), currentMonth: Q.cycleMonth(todayIso(), Q.cycleDay(db)) };
+      return { ...Q.prefs(db), idleMinutes: Math.round(idleLimit() / 60000), idleChoices: IDLE_CHOICES, today: todayIso(), currentMonth: Q.cycleMonth(todayIso(), Q.cycleDay(db)) };
     },
 
     'POST /api/prefs': async ({ body }) => {
@@ -286,6 +293,12 @@ export function createApp({ vault, appDir, port, idleMs = 5 * 60 * 1000, now = D
         vault.db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('cycle_start_day', ?)", [String(d)]);
         vault.save();
         if (isDemo) db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('cycle_start_day', ?)", [String(d)]);
+      }
+      if (body.idleMinutes !== undefined) {
+        const m = body.idleMinutes;
+        if (!IDLE_CHOICES.includes(m)) throw new ApiError(400, 'bad_request');
+        vault.db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('idle_minutes', ?)", [String(m)]);
+        vault.save();
       }
       if (body.balanceAccounts !== undefined) {
         const ids = body.balanceAccounts;
@@ -453,9 +466,62 @@ export function createApp({ vault, appDir, port, idleMs = 5 * 60 * 1000, now = D
     },
 
     'GET /api/sync/status': async () => sync.status(),
+
+    // Restore: on a fresh install (no vault yet) without a session; over an existing vault only
+    // with a session and the backup's password. Either way the password must open the backup.
+    'POST /api/restore': async ({ body, req }) => {
+      if (vault.initialized && (!hasValidToken(req) || !vault.unlocked)) throw new ApiError(401, 'unauthorized');
+      const wait = limiter.retryAfterMs();
+      if (wait > 0) throw new ApiError(429, 'too_many_attempts', { retryAfterSec: Math.ceil(wait / 1000) });
+      if (sync.status().running) throw new ApiError(409, 'sync_running');
+      if (unlockBusy) throw new ApiError(429, 'busy', { retryAfterSec: 1 });
+      unlockBusy = true;
+      try {
+        tokenHash = null;
+        sync.reset();
+        dropDemo();
+        await vault.restoreBackup(body.backup, body.password);
+      } catch (e) {
+        if (e.code === 'wrong_password') {
+          const delay = limiter.fail();
+          throw new ApiError(401, 'wrong_password', { retryAfterSec: Math.ceil(delay / 1000) });
+        }
+        throw e;
+      } finally {
+        unlockBusy = false;
+      }
+      limiter.succeed();
+      ensureSeeded();
+      clearStaleSyncing();
+      refreshRecurring();
+      log('info', 'restored from backup');
+      return { token: startSession() };
+    },
+
+    'POST /api/wipe': async ({ body }) => {
+      const wait = limiter.retryAfterMs();
+      if (wait > 0) throw new ApiError(429, 'too_many_attempts', { retryAfterSec: Math.ceil(wait / 1000) });
+      if (sync.status().running) throw new ApiError(409, 'sync_running');
+      try {
+        await vault.verifyPassword(body.password);
+      } catch (e) {
+        if (e.code === 'wrong_password') {
+          const delay = limiter.fail();
+          throw new ApiError(401, 'wrong_password', { retryAfterSec: Math.ceil(delay / 1000) });
+        }
+        throw e;
+      }
+      limiter.succeed();
+      endSession();
+      vault.destroy();
+      if (profilesDir) for (const d of fs.readdirSync(profilesDir)) fs.rmSync(path.join(profilesDir, d), { recursive: true, force: true });
+      log('info', 'all data deleted');
+      return { ok: true };
+    },
   };
+  routes['GET /api/backup'] = async () => null; // streamed below as a file
   routes['GET /api/export.csv'] = async () => null; // streamed above as a file
-  const PUBLIC = new Set(['GET /api/status', 'POST /api/setup', 'POST /api/unlock']);
+  const PUBLIC = new Set(['GET /api/status', 'POST /api/setup', 'POST /api/unlock', 'POST /api/restore']);
 
   const server = http.createServer(async (req, res) => {
     try {
@@ -485,7 +551,18 @@ export function createApp({ vault, appDir, port, idleMs = 5 * 60 * 1000, now = D
       let body = {};
       if (req.method === 'POST') {
         if (!/^application\/json\b/.test(req.headers['content-type'] || '')) return send(res, 415, { error: 'json_required' });
-        body = await readJson(req);
+        body = await readJson(req, key === 'POST /api/restore' ? MAX_BACKUP_BODY : MAX_BODY);
+      }
+      if (key === 'GET /api/backup') {
+        const backup = JSON.stringify(vault.exportBackup());
+        log('info', 'backup exported');
+        res.writeHead(200, {
+          ...SECURITY_HEADERS,
+          'Content-Type': 'application/json; charset=utf-8',
+          'Content-Disposition': `attachment; filename="balancer-backup-${todayIso()}.json"`,
+          'Cache-Control': 'no-store',
+        });
+        return res.end(backup);
       }
       if (key === 'GET /api/export.csv') {
         const csv = Q.exportCsv((await data()).db);
@@ -501,7 +578,7 @@ export function createApp({ vault, appDir, port, idleMs = 5 * 60 * 1000, now = D
     } catch (e) {
       if (e instanceof ApiError) return send(res, e.status, { error: e.code, ...e.extra });
       if (e instanceof VaultError) {
-        const status = { weak_password: 400, not_initialized: 409, already_initialized: 409, locked: 401 }[e.code] ?? 500;
+        const status = { weak_password: 400, not_initialized: 409, already_initialized: 409, locked: 401, bad_backup: 400, wrong_password: 401 }[e.code] ?? 500;
         return send(res, status, { error: e.code });
       }
       log('error', `request failed: ${e.name}: ${e.message}`);
@@ -548,13 +625,13 @@ function send(res, status, obj) {
   res.end(body);
 }
 
-function readJson(req) {
+function readJson(req, limit = MAX_BODY) {
   return new Promise((resolve, reject) => {
     let size = 0;
     const chunks = [];
     req.on('data', c => {
       size += c.length;
-      if (size > MAX_BODY) {
+      if (size > limit) {
         reject(new ApiError(413, 'too_large'));
         req.destroy();
       } else chunks.push(c);

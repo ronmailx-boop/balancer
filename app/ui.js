@@ -133,7 +133,10 @@ export function toast(text) {
 // Bottom sheet (modal dialog). Returns { close }.
 export function openSheet(title, content, { onClose } = {}) {
   const previousFocus = document.activeElement;
+  // The page behind a sheet is inert: screen readers and the keyboard stay inside the sheet
+  const shell = document.getElementById('shell');
   const close = () => {
+    if (shell && document.querySelectorAll('.sheet-overlay').length <= 1) shell.inert = false;
     overlay.classList.remove('open');
     document.removeEventListener('keydown', onKey);
     setTimeout(() => overlay.remove(), 200);
@@ -147,6 +150,7 @@ export function openSheet(title, content, { onClose } = {}) {
     h('div', { class: 'sheet-body' }, content));
   const overlay = h('div', { class: 'sheet-overlay', onclick: e => { if (e.target === overlay) close(); } }, panel);
   document.body.append(overlay);
+  if (shell) shell.inert = true;
   document.addEventListener('keydown', onKey);
   requestAnimationFrame(() => overlay.classList.add('open'));
   setTimeout(() => panel.querySelector('button, input, select, textarea')?.focus(), 50);

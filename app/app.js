@@ -1,8 +1,9 @@
 import { api, session, messageFor } from './api.js';
 import { startShell } from './shell.js';
+import { restoreBackup } from './backup.js';
 
 const $ = id => document.getElementById(id);
-const AUTH_VIEWS = ['loading', 'setup', 'unlock', 'offline'];
+const AUTH_VIEWS = ['loading', 'setup', 'unlock', 'offline', 'restore'];
 let retryTimer = null;
 let shell = null;
 
@@ -104,11 +105,26 @@ $('form-unlock').addEventListener('submit', e => {
 
 // Coming back to the tab: the vault may have auto-locked meanwhile
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && !$('shell').hidden) if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').catch(() => { /* offline shell is optional */ });
-}
+  if (document.visibilityState === 'visible' && !$('shell').hidden) route();
+});
 
-route();
+// Restore from an encrypted backup on a fresh install (e.g. a new phone)
+$('btn-show-restore').addEventListener('click', () => showAuth('restore'));
+$('btn-cancel-restore').addEventListener('click', () => showAuth('setup'));
+$('form-restore').addEventListener('submit', e => {
+  e.preventDefault();
+  setError('restore-error');
+  const file = $('restore-file').files[0];
+  if (!file) return setError('restore-error', 'יש לבחור קובץ גיבוי.');
+  busy(e.target, async () => {
+    try {
+      session.token = await restoreBackup(file, $('restore-password').value);
+      e.target.reset();
+      openApp();
+    } catch (err) {
+      setError('restore-error', messageFor(err));
+    }
+  });
 });
 
 if ('serviceWorker' in navigator) {
