@@ -5,7 +5,7 @@ Phase 1 (foundations) is built and tested in the cloud: 34 tests pass, and the s
 Phase 1 runs on the phone (setup screen in Chrome).
 OPEN BLOCKER from Phase 0: Debian Chromium crashes on the phone even without Puppeteer (`--dump-dom` → SIGTRAP; dbus/netlink errors are noise). The real crash line was not visible yet.
 Next steps:
-1. Path B (Termux-native Chromium) first run: Chromium child processes failed with "CANNOT LINK EXECUTABLE /proc/self/exe ... libtermux-exec.so" — Termux LD_PRELOAD. Fixed by launching Chromium without LD_PRELOAD (browserEnv() in scripts/spike/browser-path.mjs). Re-run result: `--single-process` works (puppeteer singleProcess / noFeatures OK); multi-process still fails. Decision: path B = Termux-native Chromium + `--single-process` (auto on process.platform === 'android'). No Debian needed. Next: Ron runs `bash scripts/spike/run-checks-native.sh` (network + Leumi/Cal/Max login pages).
+1. Path B (Termux-native Chromium) first run: Chromium child processes failed with "CANNOT LINK EXECUTABLE /proc/self/exe ... libtermux-exec.so" — Termux LD_PRELOAD. Removing LD_PRELOAD was WRONG: the Termux chromium-browser wrapper then fails with exit 126 (seen in run-checks-native). The singleProcess OK result came from a run that still had LD_PRELOAD. Fix: keep LD_PRELOAD, rely on --single-process. Re-run result: `--single-process` works (puppeteer singleProcess / noFeatures OK); multi-process still fails. Decision: path B = Termux-native Chromium + `--single-process` (auto on process.platform === 'android'). No Debian needed. Next: Ron runs `bash scripts/spike/run-checks-native.sh` again (network + Leumi/Cal/Max login pages). Phase 2 started in parallel (Ron approved).
 2. If B fails: `bash scripts/spike/diagnose.sh` again; the new output shows only the crash lines.
 3. Phase 2 (UI shell in Demo Mode) can start in parallel; the browser blocker must be solved before Phase 3 (UI shell in Demo Mode). The browser blocker must be solved before Phase 3.
 
@@ -18,7 +18,7 @@ Next steps:
 
 ## Decisions
 - Server runs in native Termux Node (v26 there); only the scraper needs Debian + Chromium.
-- Browser: path B — Termux-native Chromium (`pkg install x11-repo chromium`) with `--single-process`, launched without LD_PRELOAD. Path A (Debian/proot Chromium) crashes on the S25 FE (SIGTRAP) and is dropped.
+- Browser: path B — Termux-native Chromium (`pkg install x11-repo chromium`) with `--single-process`; keep Termux's LD_PRELOAD (removing it → exit 126). Path A (Debian/proot Chromium) crashes on the S25 FE (SIGTRAP) and is dropped.
 - Library: `israeli-bank-scrapers-core` 6.12.2 (requires Node >= 22.22.2), with `executablePath`.
 - Storage: sql.js in memory; whole DB encrypted with AES-256-GCM on disk, written atomically.
 - KDF: scrypt N=2^17 r=8 p=1 → KEK wraps a random data key.

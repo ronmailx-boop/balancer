@@ -30,11 +30,10 @@ export const BROWSER_ARGS = [
   ...(process.platform === 'android' || process.env.BALANCER_SINGLE_PROCESS ? ['--single-process'] : []),
 ];
 
-// Termux preloads libtermux-exec.so. Chromium re-executes itself via /proc/self/exe for its
-// child processes, and Android's linker refuses that preload there ("CANNOT LINK EXECUTABLE").
-// So Chromium must run without LD_PRELOAD.
+// Termux's chromium-browser is a wrapper script that needs Termux's LD_PRELOAD (termux-exec);
+// removing it makes the launch fail with exit code 126. Keep the environment as is.
+// The "CANNOT LINK EXECUTABLE /proc/self/exe" lines it causes in child processes are
+// avoided by --single-process (see BROWSER_ARGS).
 export function browserEnv() {
-  const env = { ...process.env };
-  delete env.LD_PRELOAD;
-  return env;
+  return { ...process.env };
 }
