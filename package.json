@@ -10,7 +10,8 @@
   "scripts": {
     "start": "node server/index.js",
     "test": "node --test tests/*.test.js",
-    "secret-scan": "node scripts/secret-scan.mjs --all"
+    "secret-scan": "node scripts/secret-scan.mjs --all",
+    "postinstall": "node scripts/patch-scrapers.mjs"
   },
   "dependencies": {
     "israeli-bank-scrapers-core": "6.12.2",

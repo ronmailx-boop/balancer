@@ -1,10 +1,10 @@
 # PROJECT_STATE — Balancer
 
 ## Current Focus
-Phase 3 on the phone: Leumi and Cal synced OK. Max failed with WORKER_ERROR (that label used to cover any worker failure).
-Fix 7f7d16b splits it into LAUNCH_ERROR / WORKER_ERROR / WORKER_EXIT (killed by Android), logs the short reason
-to Termux by default, releases a stale Chromium profile lock, and lets the worker close its browser on timeout.
-Next: Ron runs `git pull`, restarts, syncs Max again and sends the error card plus the `WARN sync max` Termux line.
+Phase 3 on the phone: Leumi and Cal synced OK. Max logged in, then failed in fetch:
+"Unknown transaction type העברה לסל מצטבר" (library 6.12.2 = latest, throws on unknown Max plan names).
+Fix: scripts/patch-scrapers.mjs (npm postinstall + install.sh) maps unknown Max plans to normal charges.
+Next: Ron runs `git pull && bash scripts/install.sh`, restarts, syncs Max, then `rm .env` to turn debug off.
 
 ## Browser history (Phase 0)
 - Path A (proot Debian Chromium) crashes on the S25 FE with SIGTRAP even without Puppeteer. Dropped.

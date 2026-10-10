@@ -15,6 +15,7 @@ if ! command -v chromium-browser >/dev/null && ! command -v chromium >/dev/null;
 fi
 
 npm ci --omit=dev --no-audit --no-fund
+node scripts/patch-scrapers.mjs
 git config core.hooksPath .githooks
 mkdir -p data && chmod 700 data
 
