@@ -1,7 +1,7 @@
 # Phase 0: Feasibility Report
 
 Date: 2026-10-10
-Status: **Conditional GO.** The cloud checks passed. On the phone (Galaxy S25 FE, Android 16) Chromium started but the DevTools connection dropped (`socket hang up`). Being diagnosed with `scripts/spike/diagnose.sh`. Phases 1–2 do not depend on the browser and continue meanwhile.
+Status: **GO** (2026-10-10). On the phone (Galaxy S25 FE, Android 16), Termux-native Chromium 138 with `--single-process` launches and loads the login pages of Leumi, Max and Visa Cal. The Debian/proot path crashed (SIGTRAP) and was dropped. See PROJECT_STATE.md "Browser history".
 
 ## 1. Summary
 

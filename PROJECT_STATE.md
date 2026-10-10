@@ -1,12 +1,9 @@
 # PROJECT_STATE — Balancer
 
 ## Current Focus
-Phase 2 (UI in Demo Mode) is built: 46 tests pass, every screen checked in headless Chromium (light and dark).
-Browser for scraping (Phase 0 blocker): Termux-native Chromium works with --single-process; the full check (example.com + Leumi/Cal/Max login pages) was still running on Ron's phone.
-Next steps:
-1. Ron: `cd ~/balancer && git pull && bash scripts/start.sh`, enable Demo Mode (button on the empty home screen, or Settings) and check every screen on the phone.
-2. Phone results (2026-10-10): browser OK (Chrome 138, example.com loads), Leumi login page renders, Max login page renders (password field found). Visa Cal returned "Request Rejected" (bot filter) because the probe used the HeadlessChrome User-Agent; the real scraper sends a desktop UA. Probe fixed; Ron re-runs `cd ~/balancer && git pull && bash scripts/spike/run-checks-native.sh visaCal`.
-3. Then Phase 3: connection UI, encrypted credentials, scrape runner (Termux-native Chromium, --single-process), normalization, dedupe, pending handling.
+Phase 0 is COMPLETE on the phone (2026-10-10): Termux-native Chromium 138 (--single-process) launches, reaches the internet, and the login pages of Leumi, Max and Visa Cal all render (with the scraper's User-Agent). Nothing was ever typed or submitted.
+Phase 1 runs on the phone. Phase 2 is built; Ron still has to look at it on the phone (`cd ~/balancer && git pull && bash scripts/start.sh` → enable Demo Mode).
+Next step: Ron approves the Phase 3 plan (connections + real scraping). Phase 3 touches real credentials, so it needs explicit approval, and the first real scrape is run by Ron himself.
 
 ## Browser history (Phase 0)
 - Path A (proot Debian Chromium) crashes on the S25 FE with SIGTRAP even without Puppeteer. Dropped.
@@ -35,7 +32,7 @@ Next steps:
 
 ## Phases
 - [x] Phase 0: cloud checks (crypto, storage, Chromium launch, provider list), Termux setup script, report
-- [ ] Phase 0: run on the phone — env OK, browser launch FAILED (socket hang up); diagnostics in scripts/spike/diagnose.sh
+- [x] Phase 0: run on the phone — browser OK (Termux-native, single-process), Leumi / Max / Cal login pages render
 - [x] Phase 1: Foundations
   - [x] Scaffold, package.json, .env.example, README with dependency reasons and risks
   - [x] Termux scripts: scripts/install.sh, scripts/start.sh
