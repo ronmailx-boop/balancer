@@ -25,6 +25,9 @@ export const BROWSER_ARGS = [
   '--no-zygote',
   '--no-first-run',
   '--mute-audio',
+  // Termux-native Chromium: child processes cannot start under Android's linker
+  // ("CANNOT LINK EXECUTABLE /proc/self/exe"), so everything runs in one process.
+  ...(process.platform === 'android' || process.env.BALANCER_SINGLE_PROCESS ? ['--single-process'] : []),
 ];
 
 // Termux preloads libtermux-exec.so. Chromium re-executes itself via /proc/self/exe for its
