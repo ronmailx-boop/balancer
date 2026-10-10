@@ -1,7 +1,8 @@
 import { api, session, messageFor } from './api.js';
 
 const $ = id => document.getElementById(id);
-const VIEWS = ['loading', 'setup', 'unlock', 'home'];
+const VIEWS = ['loading', 'setup', 'unlock', 'home', 'offline'];
+let retryTimer = null;
 
 function show(view) {
   for (const v of VIEWS) $(`view-${v}`).hidden = v !== view;
@@ -21,6 +22,7 @@ async function busy(form, fn) {
 
 async function route() {
   $('global-error').hidden = true;
+  clearTimeout(retryTimer);
   try {
     const status = await api('status');
     if (!status.initialized) return show('setup');
@@ -33,10 +35,17 @@ async function route() {
     session.token = null;
     show('unlock');
   } catch (e) {
+    if (e.code === 'network') {
+      show('offline');
+      retryTimer = setTimeout(route, 3000); // reconnect by itself once start.sh is running
+      return;
+    }
     $('global-error').textContent = messageFor(e);
     $('global-error').hidden = false;
   }
 }
+
+$('btn-retry').addEventListener('click', route);
 
 async function loadHome() {
   const info = await api('info');
