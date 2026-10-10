@@ -12,7 +12,8 @@ const dataDir = ensurePrivateDir(path.resolve(root, process.env.BALANCER_DATA_DI
 const idleMinutes = Number(process.env.BALANCER_IDLE_MINUTES || 5);
 
 const vault = new Vault(dataDir);
-const server = createApp({ vault, appDir: path.join(root, 'app'), port, idleMs: idleMinutes * 60 * 1000 });
+const profilesDir = ensurePrivateDir(path.join(dataDir, 'profiles')); // per-connection browser profiles
+const server = createApp({ vault, appDir: path.join(root, 'app'), port, idleMs: idleMinutes * 60 * 1000, profilesDir });
 
 server.on('error', e => {
   log('error', e.code === 'EADDRINUSE' ? `port ${port} is already in use - is Balancer already running?` : e.message);

@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import { spawnSync } from 'node:child_process';
 import puppeteer from 'puppeteer-core';
-import { findChromium, BROWSER_ARGS, browserEnv } from './browser-path.mjs';
+import { findChromium, BROWSER_ARGS, browserEnv } from '../../scraper/browser.js';
 
 const exe = findChromium();
 const osRelease = fs.existsSync('/etc/os-release')

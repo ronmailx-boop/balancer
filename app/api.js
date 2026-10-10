@@ -41,6 +41,9 @@ export function messageFor(err) {
     case 'busy': return 'בודק סיסמה, רגע…';
     case 'weak_password': return 'הסיסמה קצרה מדי. נדרשים לפחות 8 תווים.';
     case 'already_initialized': return 'כבר קיימת כספת בטלפון הזה.';
+    case 'demo_on': return 'מצב הדגמה פעיל. יש לכבות אותו בהגדרות כדי לחבר או לסנכרן חשבונות אמיתיים.';
+    case 'bad_credentials': return 'יש למלא את כל פרטי ההתחברות.';
+    case 'sync_running': return 'הסנכרון רץ כרגע. אפשר לנסות שוב כשיסתיים.';
     case 'corrupt': return 'קובץ הנתונים פגום או חסר. אפשר לשחזר מגיבוי (יתווסף בהמשך).';
     case 'unauthorized':
     case 'locked': return 'הכספת ננעלה. יש להזין סיסמה שוב.';

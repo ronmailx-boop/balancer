@@ -26,3 +26,15 @@
 - Dev logs are English, never include request bodies, and pass metadata through `redact()` (secret-looking keys removed, digit runs masked to the last 4).
 - `scripts/secret-scan.mjs` runs as a pre-commit hook. It blocks data/backup/key files, common token formats, hard-coded passwords, and Luhn-valid card numbers.
 - Only one runtime dependency (`sql.js`), pinned.
+
+## Bank connections (Phase 3)
+- Credentials are validated against the provider's own fields, then sealed with AES-256-GCM under the data key, with the AAD `balancer:credentials:<connection id>`, inside the already encrypted database. The API never returns them, and they are never logged.
+- They are decrypted only when a sync starts, and passed to a separate worker process (`scraper/worker.js`) over the IPC channel, never through argv or the environment. The worker's stdout and stderr are discarded, because library output can contain page text.
+- Each connection has its own persistent Chromium profile in `data/profiles/<id>` (mode 700), so the bank recognizes the device and asks for codes less often. The profile holds the site's cookies unencrypted, which the user accepted. Removing a connection deletes its profile, accounts and transactions.
+- Account safety:
+  - A credential error (`INVALID_PASSWORD`, `CHANGE_PASSWORD`, `ACCOUNT_BLOCKED`) sets the connection to `needs_attention`. It is **never retried automatically**, and manual syncs are refused until the user saves new credentials.
+  - A code request sets `otp_required`. SMS messages are never read.
+  - Syncs run one at a time, only when the user starts them (button or pull-to-refresh). There is a 5-minute minimum between attempts per connection, and a 6-minute hard timeout per scrape.
+- Only the error type is logged. `BALANCER_SCRAPER_DEBUG=1` adds a short message, with digit runs masked.
+- A result that arrives after the vault locked is discarded.
+- Demo Mode cannot add or sync real connections.

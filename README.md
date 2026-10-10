@@ -23,7 +23,7 @@ Stop with Ctrl+C in Termux; the vault locks on exit.
 app/       PWA front end (static, RTL Hebrew), served by the local server
 server/    Local Node server: encrypted vault, API, security headers
 shared/    Schema and migrations, default categories and rules, rules engine, demo data generator
-scraper/   (Phase 3) scraper runner
+scraper/   Scraper worker (separate process), Chromium settings, provider list
 scripts/   install / start / secret-scan; scripts/spike = Phase 0 checks
 tests/     node:test suites (fake data only)
 docs/      Spec, security notes, reports
@@ -33,7 +33,7 @@ docs/      Spec, security notes, reports
 
 ```bash
 npm install
-npm test               # 46 tests: crypto, KDF, vault, migrations, server security, log redaction, demo data, queries
+npm test               # 64 tests: crypto, KDF, vault, migrations, server security, demo data, queries, normalization, dedupe, sync
 npm run secret-scan    # scan all tracked files
 ```
 
@@ -42,8 +42,10 @@ npm run secret-scan    # scan all tracked files
 | Package | Where | Why |
 |---|---|---|
 | `sql.js` 1.14.2 | server | SQLite as WASM: real SQL with no native build (works on Termux), and the DB can be encrypted as one blob |
-| `israeli-bank-scrapers-core` 6.12.2 | scripts/spike (Phase 3: scraper) | The bank and card scrapers, on `puppeteer-core` so we supply our own Chromium |
-| `puppeteer-core` 24.43.1 | scripts/spike | Browser launch checks (same version the library uses) |
+| `israeli-bank-scrapers-core` 6.12.2 | scraper | The bank and card scrapers, on `puppeteer-core` so we supply our own Chromium (Termux's `chromium-browser`) |
+| `puppeteer-core` 24.43.1 | scraper | Launches Chromium with a per-connection profile (same version the library uses) |
+
+`npm audit` reports an FTP-parser issue (`basic-ftp`) deep inside puppeteer's browser-download tooling. Balancer never downloads browsers and never uses FTP, so that code path is not reachable.
 
 Everything else uses Node built-ins (`node:http`, `node:crypto`, `node:test`).
 

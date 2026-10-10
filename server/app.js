@@ -10,6 +10,8 @@ import { log } from './log.js';
 import * as Q from './queries.js';
 import { generateDemo, isoDate } from '../shared/demo.js';
 import { seedCategories } from '../shared/categories.js';
+import { SyncManager, credentialAad, removeProfile, connectionsList } from './sync.js';
+import { providerById, providers } from '../scraper/providers.js';
 
 export const HOST = '127.0.0.1';
 const MAX_BODY = 64 * 1024;
@@ -52,7 +54,8 @@ const MIME = {
   '.woff2': 'font/woff2',
 };
 
-export function createApp({ vault, appDir, port, idleMs = 5 * 60 * 1000, now = Date.now }) {
+export function createApp({ vault, appDir, port, idleMs = 5 * 60 * 1000, now = Date.now, profilesDir = null, syncRunner, syncMinIntervalMs }) {
+  const sync = new SyncManager({ vault, profilesDir, now, ...(syncRunner ? { runner: syncRunner } : {}), ...(syncMinIntervalMs != null ? { minIntervalMs: syncMinIntervalMs } : {}) });
   const todayIso = () => isoDate(new Date(now()));
   const allowedHosts = new Set([`${HOST}:${port}`, `localhost:${port}`]);
   const allowedOrigins = new Set([...allowedHosts].map(h => `http://${h}`));
@@ -69,6 +72,7 @@ export function createApp({ vault, appDir, port, idleMs = 5 * 60 * 1000, now = D
   };
   const endSession = () => {
     tokenHash = null;
+    sync.reset();
     dropDemo();
     vault.lock();
   };
@@ -80,6 +84,10 @@ export function createApp({ vault, appDir, port, idleMs = 5 * 60 * 1000, now = D
     demo = null;
   };
   const demoEnabled = () => Q.one(vault.db, "SELECT value FROM settings WHERE key = 'demo_mode'")?.value === '1';
+  // A sync interrupted by a restart or lock leaves 'syncing' behind
+  const clearStaleSyncing = () => {
+    if (!sync.status().running) vault.db.run("UPDATE connections SET status = 'error', status_detail = 'INTERRUPTED' WHERE status = 'syncing'");
+  };
   const ensureSeeded = () => {
     if (Q.one(vault.db, 'SELECT COUNT(*) AS n FROM categories').n === 0) {
       seedCategories(vault.db);
@@ -154,6 +162,7 @@ export function createApp({ vault, appDir, port, idleMs = 5 * 60 * 1000, now = D
       }
       limiter.succeed();
       ensureSeeded();
+      clearStaleSyncing();
       log('info', 'vault unlocked');
       return { token: startSession() };
     },
@@ -266,6 +275,60 @@ export function createApp({ vault, appDir, port, idleMs = 5 * 60 * 1000, now = D
     },
 
     'GET /api/recurring': async () => Q.recurringAndInstallments((await data()).db, todayIso()),
+
+    // ----- Connections and sync: always the real database, never demo -----
+    'GET /api/providers': async () => providers(),
+
+    'GET /api/connections': async () => ({ demo: demoEnabled(), connections: connectionsList(vault.db), sync: sync.status() }),
+
+    'POST /api/connections': async ({ body }) => {
+      if (demoEnabled()) throw new ApiError(409, 'demo_on');
+      const provider = providerById(body.provider);
+      if (!provider) throw new ApiError(400, 'bad_request');
+      const credentials = checkCredentials(provider, body.credentials);
+      const id = `conn-${crypto.randomBytes(8).toString('hex')}`;
+      const name = Q.cleanText(body.displayName, 40) || provider.name;
+      vault.db.run('INSERT INTO connections (id, kind, provider, display_name, status, credentials) VALUES (?, ?, ?, ?, \'ok\', ?)',
+        [id, provider.kind, provider.id, name, vault.sealField(JSON.stringify(credentials), credentialAad(id))]);
+      vault.save();
+      log('info', `connection added (${provider.id})`);
+      return { id };
+    },
+
+    'POST /api/connections/update': async ({ body }) => {
+      const conn = Q.one(vault.db, 'SELECT id, provider FROM connections WHERE id = ?', [String(body.id)]);
+      if (!conn) throw new ApiError(404, 'not_found');
+      const name = Q.cleanText(body.displayName, 40);
+      if (name) vault.db.run('UPDATE connections SET display_name = ? WHERE id = ?', [name, conn.id]);
+      if (body.credentials) {
+        const credentials = checkCredentials(providerById(conn.provider), body.credentials);
+        vault.db.run("UPDATE connections SET credentials = ?, status = 'ok', status_detail = NULL WHERE id = ?",
+          [vault.sealField(JSON.stringify(credentials), credentialAad(conn.id)), conn.id]);
+        sync.forgetAttempt(conn.id);
+        log('info', `credentials updated (${conn.provider})`);
+      }
+      vault.save();
+      return { ok: true };
+    },
+
+    'POST /api/connections/delete': async ({ body }) => {
+      const conn = Q.one(vault.db, 'SELECT id, provider FROM connections WHERE id = ?', [String(body.id)]);
+      if (!conn) throw new ApiError(404, 'not_found');
+      if (sync.status().running?.connectionId === conn.id) throw new ApiError(409, 'sync_running');
+      vault.db.run('DELETE FROM connections WHERE id = ?', [conn.id]); // accounts, transactions, bills cascade
+      vault.save();
+      if (profilesDir) removeProfile(profilesDir, conn.id);
+      log('info', `connection removed (${conn.provider})`);
+      return { ok: true };
+    },
+
+    'POST /api/sync': async ({ body }) => {
+      if (demoEnabled()) throw new ApiError(409, 'demo_on');
+      const ids = body.all ? connectionsList(vault.db).map(c => c.id) : [String(body.id)];
+      return sync.request(ids);
+    },
+
+    'GET /api/sync/status': async () => sync.status(),
   };
   routes['GET /api/export.csv'] = async () => null; // streamed above as a file
   const PUBLIC = new Set(['GET /api/status', 'POST /api/setup', 'POST /api/unlock']);
@@ -323,6 +386,18 @@ export function createApp({ vault, appDir, port, idleMs = 5 * 60 * 1000, now = D
   });
   server.on('close', () => clearInterval(idleTimer));
   return server;
+}
+
+// Only the provider's own fields, as short strings. Values are never logged.
+function checkCredentials(provider, input) {
+  if (!provider || !input || typeof input !== 'object') throw new ApiError(400, 'bad_credentials');
+  const out = {};
+  for (const f of provider.fields) {
+    const v = input[f.key];
+    if (typeof v !== 'string' || !v.trim() || v.length > 100) throw new ApiError(400, 'bad_credentials');
+    out[f.key] = f.type === 'password' ? v : v.trim();
+  }
+  return out;
 }
 
 class ApiError extends Error {

@@ -1,7 +1,7 @@
 // App shell: header with month picker, demo banner, bottom navigation, hash router,
 // month swipe and pull-to-refresh.
-import { h, monthLabel, shiftMonth, skeleton, errorState } from './ui.js';
-import { messageFor } from './api.js';
+import { h, monthLabel, shiftMonth, skeleton, errorState, toast } from './ui.js';
+import { api, messageFor } from './api.js';
 import * as home from './views/home.js';
 import * as month from './views/month.js';
 import * as transactions from './views/transactions.js';
@@ -136,13 +136,41 @@ export function startShell({ root, onLocked, lock }) {
     if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 1.8 && VIEWS[route].usesMonth && !e.target.closest('input, textarea, .chips, .account-strip')) {
       setMonth(shiftMonth(currentMonth, dx > 0 ? 1 : -1));
     } else if (touch.top && dy > 80 && Math.abs(dx) < 40) {
-      // Pull-to-refresh: reloads from the local store (bank sync arrives in Phase 3)
-      render({ keepScroll: true });
+      pullRefresh();
     }
     pull.style.removeProperty('--pull');
     pull.classList.remove('ready');
     touch = null;
   });
+
+  // Pull-to-refresh: syncs all connections (real data), then reloads the screen when done
+  let syncWatch = null;
+  async function pullRefresh() {
+    if (demo) return render({ keepScroll: true });
+    try {
+      const r = await api('sync', { method: 'POST', body: { all: true } });
+      if (!r.queued.length) {
+        toast(r.skipped.some(s => s.reason === 'too_soon') ? 'הנתונים עדכניים (סונכרנו לאחרונה)' : 'אין חשבונות לסנכרון');
+        return render({ keepScroll: true });
+      }
+      toast('מסנכרן… זה יכול לקחת כמה דקות');
+      clearInterval(syncWatch);
+      syncWatch = setInterval(async () => {
+        try {
+          const s = await api('sync/status');
+          if (s.running || s.queued.length) return;
+          clearInterval(syncWatch);
+          const failed = Object.values(s.results).filter(x => !x.ok).length;
+          toast(failed ? 'הסנכרון הסתיים עם שגיאות. פרטים במסך החשבונות.' : 'הסנכרון הסתיים');
+          render({ keepScroll: true });
+        } catch {
+          clearInterval(syncWatch);
+        }
+      }, 3000);
+    } catch (err) {
+      toast(messageFor(err));
+    }
+  }
 
   window.addEventListener('popstate', () => render());
   render();

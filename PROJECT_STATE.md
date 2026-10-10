@@ -1,9 +1,12 @@
 # PROJECT_STATE — Balancer
 
 ## Current Focus
-Phase 0 is COMPLETE on the phone (2026-10-10): Termux-native Chromium 138 (--single-process) launches, reaches the internet, and the login pages of Leumi, Max and Visa Cal all render (with the scraper's User-Agent). Nothing was ever typed or submitted.
-Phase 1 runs on the phone. Phase 2 is built; Ron still has to look at it on the phone (`cd ~/balancer && git pull && bash scripts/start.sh` → enable Demo Mode).
-Next step: Ron approves the Phase 3 plan (connections + real scraping). Phase 3 touches real credentials, so it needs explicit approval, and the first real scrape is run by Ron himself.
+Phase 3 is built: 64 tests pass; the real worker was smoke-tested in the cloud (Chromium starts, profile is created, network error comes back cleanly as GENERIC). Bank sites are not reachable from the cloud, so the first real sync must be run by Ron on the phone.
+Next steps:
+1. Ron: `cd ~/balancer && git pull && bash scripts/install.sh && bash scripts/start.sh`
+2. Turn Demo Mode off (Settings), then More → Accounts → Add → Leumi → enter credentials on the phone → first sync.
+3. If it fails: screenshot of the error card. For more detail: `echo BALANCER_SCRAPER_DEBUG=1 > .env`, restart start.sh, sync again, screenshot the Termux log line.
+4. Then Cal and Max. After that, Phase 4 (intelligence).
 
 ## Browser history (Phase 0)
 - Path A (proot Debian Chromium) crashes on the S25 FE with SIGTRAP even without Puppeteer. Dropped.
@@ -54,7 +57,16 @@ Next step: Ron approves the Phase 3 plan (connections + real scraping). Phase 3 
   - [x] Month picker + swipe, pull-to-refresh (reload), skeletons, toasts, bottom sheet
   - [x] PWA: manifest, icons, service worker (offline shell; API never cached)
   - [ ] Ron checks on the phone
-- [ ] Phase 3: Scraper integration
+- [x] Phase 3: Scraper integration (built and tested in the cloud with fake data; first real sync is Ron's)
+  - [x] scraper/worker.js: separate process, Termux Chromium, persistent profile per connection, credentials over IPC
+  - [x] scraper/providers.js: Leumi, Cal, Max first + the rest, Hebrew field labels (no One Zero)
+  - [x] shared/normalize.js: Israeli calendar dates, masked numbers, stable ids, pending, installments, card bills
+  - [x] server/merge.js: upsert, pending -> posted reconciliation keeping user edits, rule categorization
+  - [x] server/sync.js: one at a time, 5-min throttle, 6-min timeout, error -> status, never auto-retry credential errors
+  - [x] API: providers, connections (add/update/delete), sync, sync status
+  - [x] UI: accounts screen (add, edit, delete, sync now, progress, Hebrew errors), pull-to-refresh on home syncs all
+  - [x] Tests with recorded-shape fake fixtures (tests/fixtures/scrapes.js)
+  - [ ] Ron: first real sync of Leumi, then Cal and Max
 - [ ] Phase 4: Intelligence
 - [ ] Phase 5: Polish and hardening
 

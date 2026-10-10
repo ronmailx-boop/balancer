@@ -1,7 +1,7 @@
 // Phase 0: proves puppeteer-core can launch Chromium and render Hebrew.
 // Harmless targets only. Usage: node launch-browser.mjs [https://example.com]
 import puppeteer from 'puppeteer-core';
-import { findChromium, BROWSER_ARGS, browserEnv } from './browser-path.mjs';
+import { findChromium, BROWSER_ARGS, browserEnv } from '../../scraper/browser.js';
 
 const executablePath = findChromium();
 console.log('chromium:', executablePath);

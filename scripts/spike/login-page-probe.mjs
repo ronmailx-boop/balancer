@@ -3,7 +3,7 @@
 // Usage: node login-page-probe.mjs leumi|max|visaCal|discount|<https url>
 import puppeteer from 'puppeteer-core';
 import { SCRAPERS } from 'israeli-bank-scrapers-core';
-import { findChromium, BROWSER_ARGS, browserEnv } from './browser-path.mjs';
+import { findChromium, BROWSER_ARGS, browserEnv } from '../../scraper/browser.js';
 
 // Login URLs as used inside israeli-bank-scrapers 6.12.x
 const LOGIN_URLS = {

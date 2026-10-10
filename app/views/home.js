@@ -10,8 +10,10 @@ export async function render(ctx) {
   ctx.setDemo(o.demo);
   if (!o.hasData) {
     return emptyState('🏦', 'אין עדיין נתונים',
-      'חיבור לבנק ולכרטיסי האשראי יתווסף בשלב הבא. בינתיים אפשר לראות איך האפליקציה נראית עם נתונים לדוגמה.',
-      h('button', { class: 'btn primary', type: 'button', onclick: async () => { await api('settings/demo', { method: 'POST', body: { enabled: true } }); ctx.refresh(); } }, 'הפעלת מצב הדגמה'));
+      'מחברים את הבנק וכרטיסי האשראי, או מסתכלים קודם איך זה נראה עם נתונים לדוגמה.',
+      h('div', { class: 'stack' },
+        h('button', { class: 'btn primary', type: 'button', onclick: () => ctx.navigate('accounts') }, 'חיבור בנק או כרטיס אשראי'),
+        h('button', { class: 'btn', type: 'button', onclick: async () => { await api('settings/demo', { method: 'POST', body: { enabled: true } }); ctx.refresh(); } }, 'הצצה עם נתונים לדוגמה')));
   }
 
   const net = o.net;

@@ -22,4 +22,6 @@ trap 'termux-wake-unlock 2>/dev/null || true' EXIT
   echo "The server did not start; see the messages above."
 ) &
 
+# Loads optional settings from .env (see .env.example)
+[ -f .env ] && set -a && . ./.env && set +a
 node server/index.js
