@@ -76,6 +76,7 @@ export function txRow(t, onclick) {
           h('span', {}, ` · ${t.accountName}`),
           TYPE_LABEL[t.type] && h('span', { class: `badge ${t.type}` }, t.type === 'installments' ? `${t.installmentNumber}/${t.installmentTotal}` : TYPE_LABEL[t.type]),
           t.recurring && h('span', { class: 'badge' }, 'קבועה'),
+          t.split && h('span', { class: 'badge' }, 'מפוצלת'),
           t.excluded && h('span', { class: 'badge' }, 'מוחרגת'))),
       h('span', { class: `tx-amount ${t.amount > 0 ? 'pos' : ''}` }, money(t.amount, { decimals: true, sign: t.amount > 0 }))));
 }
@@ -119,7 +120,9 @@ export function openDetail(ctx, t, cats) {
     h('label', { for: 'tx-notes' }, 'הערה'), notes,
     h('label', { for: 'tx-tags' }, 'תגיות (מופרדות בפסיק)'), tags,
     h('label', { class: 'check', for: 'tx-excluded' }, excluded, 'להחריג מהתקציב והסיכומים'),
-    h('p', { class: 'muted small' }, 'פיצול עסקה לכמה קטגוריות יתווסף בשלב 4.'),
+    t.categoryType !== 'transfer' && t.type !== 'pending' && h('div', { class: 'split-box' },
+      t.split && h('p', { class: 'muted small' }, 'העסקה מפוצלת לכמה קטגוריות.'),
+      h('button', { type: 'button', class: 'btn', onclick: () => { sheet.close(); openSplit(ctx, t.id, cats); } }, t.split ? '✂️ עריכת הפיצול' : '✂️ פיצול לכמה קטגוריות')),
     error,
     save);
 
@@ -147,6 +150,73 @@ export function openDetail(ctx, t, cats) {
       save.disabled = false;
     }
   });
+}
+
+// Split one transaction across categories; what is not assigned stays in its own category
+async function openSplit(ctx, id, cats) {
+  let t;
+  try {
+    t = await api(`transaction?id=${encodeURIComponent(id)}`);
+  } catch (err) {
+    return toast(messageFor(err));
+  }
+  const total = Math.abs(t.amount);
+  const own = cats.find(c => c.id === t.categoryId);
+  // Expense categories first; a new row starts on the first one that is not the transaction's own
+  const options = [...cats.filter(c => c.type === 'expense'), ...cats.filter(c => c.type === 'income' || c.type === 'transfer')];
+  const firstOther = options.find(c => c.id !== t.categoryId)?.id;
+  const rowsEl = h('div', { class: 'split-rows' });
+  const rest = h('p', { class: 'muted small', 'aria-live': 'polite' });
+  const error = h('p', { class: 'error', role: 'alert' });
+  let n = 0;
+
+  const addRow = (categoryId = firstOther, amount = '') => {
+    const i = ++n;
+    const sel = h('select', { id: `split-cat-${i}`, 'aria-label': 'קטגוריה' },
+      options.map(c => h('option', { value: c.id, selected: c.id === categoryId }, `${c.icon} ${c.name}`)));
+    const amt = h('input', { id: `split-amt-${i}`, type: 'number', inputmode: 'decimal', min: 0, step: '0.01', value: amount, placeholder: 'סכום', 'aria-label': 'סכום' });
+    const row = h('div', { class: 'split-row' }, sel, amt,
+      h('button', { type: 'button', class: 'icon-btn', 'aria-label': 'הסרת שורה', onclick: () => { row.remove(); update(); } }, '✕'));
+    amt.addEventListener('input', update);
+    rowsEl.append(row);
+    update();
+  };
+  const parts = () => [...rowsEl.querySelectorAll('.split-row')].map(r => ({ categoryId: r.querySelector('select').value, amount: Number(r.querySelector('input').value) }));
+  function update() {
+    const used = parts().reduce((s, p) => s + (p.amount > 0 ? p.amount : 0), 0);
+    const left = Math.round((total - used) * 100) / 100;
+    rest.textContent = left >= 0 ? `נשאר ב${own ? own.name : 'ללא קטגוריה'}: ${money(left, { decimals: true })}` : `חריגה של ${money(-left, { decimals: true })} מסכום העסקה`;
+    rest.classList.toggle('neg', left < 0);
+  }
+
+  // Existing parts, except the remainder that sits in the transaction's own category
+  const existing = t.splits.filter((p, i) => !(p.categoryId === t.categoryId && i === t.splits.length - 1));
+  if (existing.length) existing.forEach(p => addRow(p.categoryId, Math.abs(p.amount)));
+  else addRow();
+
+  const save = h('button', { type: 'submit', class: 'btn primary' }, 'שמירת הפיצול');
+  const form = h('form', { class: 'split-form', novalidate: true },
+    h('p', {}, `${t.description} · ${money(total, { decimals: true })}`),
+    rowsEl,
+    h('button', { type: 'button', class: 'link', onclick: () => addRow() }, '+ עוד קטגוריה'),
+    rest, error, save,
+    t.split && h('button', { type: 'button', class: 'btn danger', onclick: () => submit([]) }, 'ביטול הפיצול'));
+  const sheet = openSheet('פיצול עסקה', form);
+  async function submit(list) {
+    error.textContent = '';
+    if (list.some(p => !(p.amount > 0))) return (error.textContent = 'יש למלא סכום חיובי בכל שורה.');
+    save.disabled = true;
+    try {
+      await api('transactions/split', { method: 'POST', body: { id: t.id, parts: list } });
+      sheet.close();
+      toast(list.length ? 'העסקה פוצלה' : 'הפיצול בוטל');
+      ctx.refresh({ keepScroll: true });
+    } catch (err) {
+      error.textContent = messageFor(err);
+      save.disabled = false;
+    }
+  }
+  form.addEventListener('submit', e => { e.preventDefault(); submit(parts()); });
 }
 
 function openFilters(ctx, f, cats, accounts) {

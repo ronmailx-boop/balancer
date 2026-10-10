@@ -44,6 +44,11 @@ export function messageFor(err) {
     case 'demo_on': return 'מצב הדגמה פעיל. יש לכבות אותו בהגדרות כדי לחבר או לסנכרן חשבונות אמיתיים.';
     case 'bad_credentials': return 'יש למלא את כל פרטי ההתחברות.';
     case 'sync_running': return 'הסנכרון רץ כרגע. אפשר לנסות שוב כשיסתיים.';
+    case 'bad_split': return 'סכומי הפיצול גבוהים מסכום העסקה, או שחסר סכום.';
+    case 'not_found': return 'הפריט לא נמצא. ייתכן שהוא נמחק או השתנה בסנכרון.';
+    case 'bad_request': return 'הנתונים שנשלחו לא תקינים.';
+    case 'name_taken': return 'כבר קיימת קטגוריה בשם הזה.';
+    case 'bad_rule': return 'החוק לא תקין. יש למלא טקסט לחיפוש ולבחור קטגוריה.';
     case 'corrupt': return 'קובץ הנתונים פגום או חסר. אפשר לשחזר מגיבוי (יתווסף בהמשך).';
     case 'unauthorized':
     case 'locked': return 'הכספת ננעלה. יש להזין סיסמה שוב.';

@@ -414,3 +414,23 @@ textarea, select {
 .notice { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
 .notice p { margin: 0; }
 .stack { display: flex; flex-direction: column; gap: 0; width: 100%; max-width: 300px; }
+
+/* Split transaction */
+.split-box { margin-top: 12px; }
+.split-form { display: flex; flex-direction: column; gap: 8px; }
+.split-rows { display: flex; flex-direction: column; gap: 8px; }
+.split-row { display: grid; grid-template-columns: 1fr 110px 44px; gap: 6px; align-items: center; }
+.split-row select, .split-row input { margin: 0; min-width: 0; }
+.split-form .link { align-self: flex-start; }
+
+/* Category management */
+form .pair { display: grid; grid-template-columns: 1fr 90px; gap: 10px; }
+form .pair > div { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.icon-input { text-align: center; font-size: 1.3rem; }
+.cat-group + .cat-group { margin-top: 12px; }
+
+/* Insights */
+.insights { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.insight { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); }
+.insight > span:nth-child(2) { flex: 1; }
+.insight-icon { font-size: 1.2rem; }

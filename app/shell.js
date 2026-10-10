@@ -11,8 +11,9 @@ import * as trends from './views/trends.js';
 import * as recurring from './views/recurring.js';
 import * as accounts from './views/accounts.js';
 import * as settings from './views/settings.js';
+import * as categories from './views/categories.js';
 
-const VIEWS = { home, month, transactions, budget, more, trends, recurring, accounts, settings };
+const VIEWS = { home, month, transactions, budget, more, trends, recurring, accounts, settings, categories };
 const NAV = [
   ['home', '🏠', 'בית'],
   ['month', '📊', 'חודשי'],
@@ -20,7 +21,7 @@ const NAV = [
   ['budget', '🎯', 'תקציב'],
   ['more', '☰', 'עוד'],
 ];
-const NAV_PARENT = { trends: 'more', recurring: 'more', accounts: 'more', settings: 'more' };
+const NAV_PARENT = { trends: 'more', recurring: 'more', accounts: 'more', settings: 'more', categories: 'more' };
 
 export function startShell({ root, onLocked, lock }) {
   let cycleDay = 1; // the day a budget month starts (Settings), loaded below

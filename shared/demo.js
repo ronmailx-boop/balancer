@@ -1,6 +1,7 @@
 // Demo Mode: realistic fake Hebrew data for one household. Deterministic for a given "today".
 // Never mixed with real data: it is written only into a separate in-memory database.
 import { seedCategories } from './categories.js';
+import { detectRecurring } from './recurring.js';
 
 // Small seeded PRNG (mulberry32)
 function rng(seed) {
@@ -191,18 +192,6 @@ export function generateDemo(db, { today = new Date() } = {}) {
   }
   charge.free();
 
-  // Recurring items (Phase 4 detects these automatically; demo seeds them)
-  const rec = db.prepare("INSERT INTO recurring_items (id, merchant, typical_amount, cadence, next_expected, status) VALUES (?, ?, ?, ?, ?, 'active')");
-  const nextOn = day => {
-    const d = dateOf(t0.getFullYear(), t0.getMonth(), day);
-    return isoDate(isoDate(d) > todayIso ? d : dateOf(t0.getFullYear(), t0.getMonth() + 1, day));
-  };
-  rec.run(['demo-rec-salary', 'משכורת - טכנולוגיות בע"מ', 18500, 'monthly', nextOn(9)]);
-  rec.run(['demo-rec-rent', 'הוראת קבע - שכר דירה', -5200, 'monthly', nextOn(1)]);
-  rec.run(['demo-rec-savings', 'העברה לחיסכון', -1000, 'monthly', nextOn(27)]);
-  rec.run(['demo-rec-arnona', 'עיריית תל אביב - ארנונה', -780, 'bimonthly', nextOn(6)]);
-  SUBSCRIPTIONS.forEach(([description, , , day, amount], i) => rec.run([`demo-rec-sub-${i}`, description, -amount, 'monthly', nextOn(day)]));
-  rec.free();
 
   // Budgets for every demo month
   const PLAN = { groceries: 3200, restaurants: 1100, transport: 1200, health: 300, shopping: 700, leisure: 250, home: 400, subscriptions: 400, communication: 60, fitness: 250, insurance: 190, utilities: 700, rent: 5200, gifts: 200, cash: 400 };
@@ -212,4 +201,6 @@ export function generateDemo(db, { today = new Date() } = {}) {
 
   db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('demo_generated_for', ?)", [todayIso]);
   db.run('COMMIT');
+  // Recurring items come from the same detection the real data uses
+  detectRecurring(db, todayIso);
 }

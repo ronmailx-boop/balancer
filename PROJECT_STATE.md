@@ -1,13 +1,13 @@
 # PROJECT_STATE — Balancer
 
 ## Current Focus
-Phase 3 verified on the phone (Leumi, Cal, Max). Ron's follow-up requests, built (2026-10-10):
-- Budget month cycle: Settings -> "חודש התקציב" (start day 1-28; Ron wants 10 = 10th..9th). All totals,
-  budget, trends, alerts and projection use it (settings key cycle_start_day; Q.monthBounds(month, day), Q.cycleMonth).
-- Bank balance from chosen accounts: tap the balance on Home, or Settings -> "יתרה בעו״ש" (key balance_accounts; [] = all).
-- Card bill breakdown: tap a row in "חיובי אשראי קרובים" -> sheet with the card's transactions charged on that date (GET /api/card-charge).
-Ron confirmed on the phone (2026-10-10): all three work.
-Phase 4 starts only after Ron approves it.
+Phase 4 (intelligence) is built: 78 tests pass, screens checked in headless Chromium with demo data.
+Next: Ron pulls, restarts (migration v2 runs on unlock), and checks with his real data:
+1. עוד -> הוראות קבע ותשלומים: are the detected recurring items right? Mark wrong ones "זה לא חיוב קבוע".
+2. Home -> תובנות and התראות.
+3. A transaction -> "פיצול לכמה קטגוריות".
+4. עוד -> קטגוריות וחוקים: add a rule.
+Then Phase 5 (polish and hardening: encrypted backup/restore, data wipe, auto-lock setting, performance, accessibility, security review, docs) after Ron approves.
 
 ## Browser history (Phase 0)
 - Path A (proot Debian Chromium) crashes on the S25 FE with SIGTRAP even without Puppeteer. Dropped.
@@ -57,7 +57,7 @@ Phase 4 starts only after Ron approves it.
   - [x] Charts in plain SVG (app/charts.js), colors validated for color-vision deficiency
   - [x] Month picker + swipe, pull-to-refresh (reload), skeletons, toasts, bottom sheet
   - [x] PWA: manifest, icons, service worker (offline shell; API never cached)
-  - [ ] Ron checks on the phone
+  - [x] Ron checks on the phone (uses it daily with real data)
 - [x] Phase 3: Scraper integration (verified on the phone: Leumi, Cal and Max all sync)
   - [x] scraper/worker.js: separate process, Termux Chromium, persistent profile per connection, credentials over IPC
   - [x] scraper/providers.js: Leumi, Cal, Max first + the rest, Hebrew field labels (no One Zero)
@@ -68,7 +68,15 @@ Phase 4 starts only after Ron approves it.
   - [x] UI: accounts screen (add, edit, delete, sync now, progress, Hebrew errors), pull-to-refresh on home syncs all
   - [x] Tests with recorded-shape fake fixtures (tests/fixtures/scrapes.js)
   - [x] Ron: first real sync of Leumi, Cal and Max (2026-10-10; Max needed the unknown-plan patch)
-- [ ] Phase 4: Intelligence
+- [x] Phase 4: Intelligence (built and tested in the cloud with demo data; waiting for Ron's check on real data)
+  - [x] Migration v2: transaction_splits; recurring_items gets merchant_key, account_id, category_id, last/previous amount, occurrences, source
+  - [x] Recurring detection (shared/recurring.js): per account + merchant key, weekly/monthly/bimonthly/yearly, same-day check, amount spread; runs after sync, on unlock, in demo; "not recurring" kept in settings.recurring_dismissed
+  - [x] Alerts: price rise (fixed-price items only), expected charge/income missing, possible double charge; critical first
+  - [x] Split transaction (POST /api/transactions/split): sums use COUNTED_TX (parts replace the whole); not for pending or transfers
+  - [x] Categories and rules screen (#/categories): custom categories (u- ids), built-in type locked, user rules add/delete with re-categorization
+  - [x] Insights on home: variable-spending pace vs 3-cycle average, categories over average, monthly recurring total
+  - [x] Recurring screen rebuilt on real detection (income / expenses / stopped, detail sheet, dismiss)
+  - [ ] Ron checks on the phone with real data
 - [ ] Phase 5: Polish and hardening
 
 ## Open questions for Ron

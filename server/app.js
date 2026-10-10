@@ -9,6 +9,7 @@ import { schemaVersion, openDatabase, migrate } from './db.js';
 import { log } from './log.js';
 import * as Q from './queries.js';
 import { generateDemo, isoDate } from '../shared/demo.js';
+import { detectRecurring } from '../shared/recurring.js';
 import { seedCategories } from '../shared/categories.js';
 import { SyncManager, credentialAad, removeProfile, connectionsList } from './sync.js';
 import { providerById, providers } from '../scraper/providers.js';
@@ -88,6 +89,15 @@ export function createApp({ vault, appDir, port, idleMs = 5 * 60 * 1000, now = D
   const clearStaleSyncing = () => {
     if (!sync.status().running) vault.db.run("UPDATE connections SET status = 'error', status_detail = 'INTERRUPTED' WHERE status = 'syncing'");
   };
+  // Recurring items depend on today's date (overdue, ended), so they are rebuilt on unlock as well
+  const refreshRecurring = () => {
+    try {
+      detectRecurring(vault.db, todayIso());
+      vault.save();
+    } catch (e) {
+      log('error', `recurring detection failed (${e.message})`);
+    }
+  };
   const ensureSeeded = () => {
     if (Q.one(vault.db, 'SELECT COUNT(*) AS n FROM categories').n === 0) {
       seedCategories(vault.db);
@@ -108,6 +118,15 @@ export function createApp({ vault, appDir, port, idleMs = 5 * 60 * 1000, now = D
       demo = { db, day };
     }
     return { db: demo.db, save: () => {}, demo: true };
+  };
+  // Maps validation errors from the query layer to 4xx responses
+  const withInput = async fn => {
+    try {
+      return await fn();
+    } catch (e) {
+      if (e instanceof Q.InputError) throw new ApiError(e.code === 'not_found' ? 404 : 400, e.code);
+      throw e;
+    }
   };
   const monthParam = (url, db) => {
     const m = url.searchParams.get('month');
@@ -165,6 +184,7 @@ export function createApp({ vault, appDir, port, idleMs = 5 * 60 * 1000, now = D
       limiter.succeed();
       ensureSeeded();
       clearStaleSyncing();
+      refreshRecurring();
       log('info', 'vault unlocked');
       return { token: startSession() };
     },
@@ -217,6 +237,41 @@ export function createApp({ vault, appDir, port, idleMs = 5 * 60 * 1000, now = D
 
     'GET /api/categories': async () => Q.categories((await data()).db),
 
+    'GET /api/categories/manage': async () => Q.manageCategories((await data()).db),
+
+    'POST /api/categories/save': async ({ body }) => withInput(async () => {
+      const { db, save } = await data();
+      const id = Q.saveCategory(db, {
+        id: typeof body.id === 'string' ? body.id : null, name: body.name, icon: body.icon, type: body.type, fixed: Boolean(body.fixed),
+      });
+      save();
+      return { id, ...Q.manageCategories(db) };
+    }),
+
+    'POST /api/categories/delete': async ({ body }) => withInput(async () => {
+      const { db, save } = await data();
+      Q.deleteCategory(db, String(body.id || ''));
+      detectRecurring(db, todayIso());
+      save();
+      return Q.manageCategories(db);
+    }),
+
+    'POST /api/rules/add': async ({ body }) => withInput(async () => {
+      const { db, save } = await data();
+      const changed = Q.addRule(db, { pattern: body.pattern, matchType: body.matchType, categoryId: body.categoryId });
+      detectRecurring(db, todayIso());
+      save();
+      return { changed, ...Q.manageCategories(db) };
+    }),
+
+    'POST /api/rules/delete': async ({ body }) => withInput(async () => {
+      const { db, save } = await data();
+      Q.deleteRule(db, String(body.id || ''));
+      detectRecurring(db, todayIso());
+      save();
+      return Q.manageCategories(db);
+    }),
+
     'GET /api/prefs': async () => {
       const { db } = await data();
       return { ...Q.prefs(db), today: todayIso(), currentMonth: Q.cycleMonth(todayIso(), Q.cycleDay(db)) };
@@ -268,6 +323,27 @@ export function createApp({ vault, appDir, port, idleMs = 5 * 60 * 1000, now = D
       });
     },
 
+    'GET /api/transaction': async ({ url }) => {
+      const { db } = await data();
+      const res = Q.transactionById(db, String(url.searchParams.get('id') || '').slice(0, 100));
+      if (!res) throw new ApiError(404, 'not_found');
+      return res;
+    },
+
+    'POST /api/transactions/split': async ({ body }) => {
+      const { db, save } = await data();
+      if (typeof body.id !== 'string' || !Array.isArray(body.parts) || body.parts.length > 10) throw new ApiError(400, 'bad_request');
+      let res;
+      try {
+        res = Q.setSplits(db, body.id, body.parts.map(p => ({ categoryId: typeof p?.categoryId === 'string' ? p.categoryId : null, amount: p?.amount })));
+      } catch {
+        throw new ApiError(400, 'bad_split');
+      }
+      if (!res) throw new ApiError(404, 'not_found');
+      save();
+      return res;
+    },
+
     'POST /api/transactions/update': async ({ body }) => {
       const { db, save } = await data();
       if (typeof body.id !== 'string') throw new ApiError(400, 'bad_request');
@@ -315,6 +391,14 @@ export function createApp({ vault, appDir, port, idleMs = 5 * 60 * 1000, now = D
     },
 
     'GET /api/recurring': async () => Q.recurringAndInstallments((await data()).db, todayIso()),
+
+    'POST /api/recurring/dismiss': async ({ body }) => {
+      const { db, save } = await data();
+      if (typeof body.id !== 'string' || body.id.length > 80) throw new ApiError(400, 'bad_request');
+      if (!Q.dismissRecurring(db, body.id, Boolean(body.dismissed), todayIso())) throw new ApiError(404, 'not_found');
+      save();
+      return Q.recurringAndInstallments(db, todayIso());
+    },
 
     // ----- Connections and sync: always the real database, never demo -----
     'GET /api/providers': async () => providers(),

@@ -107,4 +107,29 @@ CREATE TABLE card_charges (
 );
 `,
   },
+  {
+    version: 2,
+    name: 'splits and recurring detection',
+    sql: `
+-- A split transaction is counted through its parts instead of as a whole.
+-- amount has the sign of the parent's charged_amount; the parts add up to it.
+CREATE TABLE transaction_splits (
+  id               TEXT PRIMARY KEY,
+  transaction_id   TEXT NOT NULL REFERENCES transactions(id) ON DELETE CASCADE,
+  category_id      TEXT REFERENCES categories(id) ON DELETE SET NULL,
+  amount           REAL NOT NULL
+);
+CREATE INDEX idx_splits_tx ON transaction_splits(transaction_id);
+
+-- Recurring items are detected from the transactions (source 'auto'); the user can stop one.
+ALTER TABLE recurring_items ADD COLUMN merchant_key TEXT;
+ALTER TABLE recurring_items ADD COLUMN account_id TEXT;
+ALTER TABLE recurring_items ADD COLUMN category_id TEXT;
+ALTER TABLE recurring_items ADD COLUMN last_date TEXT;
+ALTER TABLE recurring_items ADD COLUMN last_amount REAL;
+ALTER TABLE recurring_items ADD COLUMN previous_amount REAL;
+ALTER TABLE recurring_items ADD COLUMN occurrences INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE recurring_items ADD COLUMN source TEXT NOT NULL DEFAULT 'auto';
+`,
+  },
 ];

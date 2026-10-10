@@ -52,6 +52,12 @@ export async function render(ctx) {
         h('span', {}, a.text),
         a.categoryId && h('button', { class: 'link', type: 'button', onclick: () => ctx.navigate('transactions', { category: a.categoryId }) }, 'פירוט'))))),
 
+    o.insights?.length > 0 && card(cardTitle('תובנות'),
+      h('ul', { class: 'insights' }, o.insights.map(i => h('li', { class: `insight ${i.level}` },
+        h('span', { class: 'insight-icon', 'aria-hidden': 'true' }, i.icon),
+        h('span', {}, i.text),
+        (i.categoryId || i.link) && h('button', { class: 'link', type: 'button', onclick: () => (i.link ? ctx.navigate(i.link) : ctx.navigate('transactions', { category: i.categoryId })) }, 'פירוט'))))),
+
     o.upcomingCharges.length > 0 && card(cardTitle('חיובי אשראי קרובים'),
       h('ul', { class: 'list' }, o.upcomingCharges.map(c => h('li', {},
         h('button', { type: 'button', class: 'list-row list-button', onclick: () => openCharge(ctx, c) },
