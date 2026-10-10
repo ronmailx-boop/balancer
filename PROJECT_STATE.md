@@ -1,12 +1,10 @@
 # PROJECT_STATE — Balancer
 
 ## Current Focus
-Phase 3 is built: 64 tests pass; the real worker was smoke-tested in the cloud (Chromium starts, profile is created, network error comes back cleanly as GENERIC). Bank sites are not reachable from the cloud, so the first real sync must be run by Ron on the phone.
-Next steps:
-1. Ron: `cd ~/balancer && git pull && bash scripts/install.sh && bash scripts/start.sh`
-2. Turn Demo Mode off (Settings), then More → Accounts → Add → Leumi → enter credentials on the phone → first sync.
-3. If it fails: screenshot of the error card. For more detail: `echo BALANCER_SCRAPER_DEBUG=1 > .env`, restart start.sh, sync again, screenshot the Termux log line.
-4. Then Cal and Max. After that, Phase 4 (intelligence).
+Phase 3 on the phone: Leumi and Cal synced OK. Max failed with WORKER_ERROR (that label used to cover any worker failure).
+Fix 7f7d16b splits it into LAUNCH_ERROR / WORKER_ERROR / WORKER_EXIT (killed by Android), logs the short reason
+to Termux by default, releases a stale Chromium profile lock, and lets the worker close its browser on timeout.
+Next: Ron runs `git pull`, restarts, syncs Max again and sends the error card plus the `WARN sync max` Termux line.
 
 ## Browser history (Phase 0)
 - Path A (proot Debian Chromium) crashes on the S25 FE with SIGTRAP even without Puppeteer. Dropped.
