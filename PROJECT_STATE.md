@@ -6,10 +6,10 @@ Phase 0 is waiting on the phone run. The first attempt failed because git was mi
 Next step: Ron runs it and pastes `~/balancer/phase0-results.txt`. Then Phase 1 starts.
 
 ## Ron's answers (2026-10-10)
-- Device: Samsung Galaxy S25 FE, Android 16 → phantom-process fix = Developer options → "Disable child process restrictions".
+- Device: Samsung Galaxy S25 FE, Android 16 → phantom-process fix: the Developer options toggle was not found on his Samsung; run checks first, fall back to adb-over-wireless-debugging from Termux if Chromium gets killed (signal 9).
 - First institutions: Bank Leumi (bank), Visa Cal + Max (cards).
 - SMS: the app must NOT read SMS messages (no SMS permission, no auto-read). If a site asks for a code, Ron types it himself.
-- Browser profile: default is to keep a persistent per-connection profile (`userDataDir`) so the bank asks for codes less often. Ron has not confirmed keep vs. wipe yet. If a site demands a code we can't handle, mark the connection `otp_required` and stop; never retry.
+- Browser profile: KEEP a persistent per-connection profile (`userDataDir`) so the bank asks for codes less often (Ron confirmed). If a site demands a code we can't handle, mark the connection `otp_required` and stop; never retry.
 - Ron uses Chrome on Android. The UI (PWA) opens in his Chrome at http://127.0.0.1; the scraping uses a separate headless Chromium inside Termux/Debian (Puppeteer cannot drive the Chrome app, and keeping it separate avoids touching his personal browsing sessions).
 
 ## Decisions
@@ -30,4 +30,3 @@ Next step: Ron runs it and pastes `~/balancer/phase0-results.txt`. Then Phase 1 
 
 ## Open questions for Ron
 1. Phone check output (`phase0-results.txt`)
-2. Keep or wipe the per-bank browser profile between syncs (default: keep)
