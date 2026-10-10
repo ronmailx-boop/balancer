@@ -5,13 +5,14 @@ Phase 2 (UI in Demo Mode) is built: 46 tests pass, every screen checked in headl
 Browser for scraping (Phase 0 blocker): Termux-native Chromium works with --single-process; the full check (example.com + Leumi/Cal/Max login pages) was still running on Ron's phone.
 Next steps:
 1. Ron: `cd ~/balancer && git pull && bash scripts/start.sh`, enable Demo Mode (button on the empty home screen, or Settings) and check every screen on the phone.
-2. Ron: `bash scripts/spike/run-checks-native.sh` and send the RESULT lines (browser + Leumi/Cal/Max login pages). Must pass before Phase 3.
+2. Phone results (2026-10-10): browser OK (Chrome 138, example.com loads), Leumi login page renders, Max login page renders (password field found). Visa Cal returned "Request Rejected" (bot filter) because the probe used the HeadlessChrome User-Agent; the real scraper sends a desktop UA. Probe fixed; Ron re-runs `cd ~/balancer && git pull && bash scripts/spike/run-checks-native.sh visaCal`.
 3. Then Phase 3: connection UI, encrypted credentials, scrape runner (Termux-native Chromium, --single-process), normalization, dedupe, pending handling.
 
 ## Browser history (Phase 0)
 - Path A (proot Debian Chromium) crashes on the S25 FE with SIGTRAP even without Puppeteer. Dropped.
 - Path B (Termux-native `chromium-browser`): multi-process fails ("CANNOT LINK EXECUTABLE /proc/self/exe ... libtermux-exec.so"); `--single-process` works.
 - Removing LD_PRELOAD was wrong: the wrapper then exits with 126. Keep LD_PRELOAD.
+- Always hide "HeadlessChrome" in the User-Agent (the library does it; Cal's WAF rejects it).
 
 ## Ron's answers (2026-10-10)
 - Device: Samsung Galaxy S25 FE, Android 16 → phantom-process fix: the Developer options toggle was not found on his Samsung; run checks first, fall back to adb-over-wireless-debugging from Termux if Chromium gets killed (signal 9).
