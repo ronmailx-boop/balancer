@@ -7,7 +7,8 @@ import net from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { Vault } from '../server/vault.js';
 import { createApp, HOST } from '../server/app.js';
-import { statusForError } from '../server/sync.js';
+import os from 'node:os';
+import { statusForError, forkRunner } from '../server/sync.js';
 import { TEST_KDF, tempDir } from './helpers.js';
 import { maxFirst } from './fixtures/scrapes.js';
 
@@ -181,4 +182,18 @@ test('a result that arrives after the vault locked is discarded', async t => {
   await s.vault.unlock(PW);
   const n = s.vault.db.exec('SELECT COUNT(*) FROM transactions')[0].values[0][0];
   assert.equal(n, 0);
+});
+
+test('forkRunner reports a browser that cannot start as LAUNCH_ERROR', async () => {
+  const prev = process.env.CHROME_PATH;
+  process.env.CHROME_PATH = '/nonexistent/chromium';
+  try {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'balancer-prof-'));
+    const r = await forkRunner({ provider: 'max', credentials: { username: 'u', password: 'p' }, startDate: new Date().toISOString(), profileDir: dir }, () => {});
+    assert.equal(r.success, false);
+    assert.equal(r.errorType, 'LAUNCH_ERROR');
+    fs.rmSync(dir, { recursive: true, force: true });
+  } finally {
+    if (prev === undefined) delete process.env.CHROME_PATH; else process.env.CHROME_PATH = prev;
+  }
 });

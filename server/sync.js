@@ -39,19 +39,27 @@ export function forkRunner(job, onProgress) {
       if (done) return;
       done = true;
       clearTimeout(timer);
-      if (child.exitCode === null) child.kill('SIGKILL');
       resolve(result);
     };
-    const timer = setTimeout(() => finish({ success: false, errorType: 'TIMEOUT' }), SCRAPE_TIMEOUT_MS);
+    const timer = setTimeout(() => {
+      // Let the worker close its browser (a killed worker would leave Chromium holding the profile)
+      try { child.send({ type: 'abort' }); } catch { /* already gone */ }
+      setTimeout(() => { if (child.exitCode === null) child.kill('SIGKILL'); }, 15_000).unref();
+      finish({ success: false, errorType: 'TIMEOUT' });
+    }, SCRAPE_TIMEOUT_MS);
     child.on('message', msg => {
       if (msg?.type === 'progress') onProgress(msg.stage);
       if (msg?.type === 'result') finish(msg.result);
     });
-    child.on('exit', () => finish({ success: false, errorType: 'WORKER_ERROR' }));
-    child.on('error', () => finish({ success: false, errorType: 'WORKER_ERROR' }));
+    // Exit without a result: the process was killed (Android memory pressure) or crashed
+    child.on('exit', (code, signal) => finish({ success: false, errorType: 'WORKER_EXIT', errorMessage: `exit code=${code} signal=${signal}` }));
+    child.on('error', e => finish({ success: false, errorType: 'WORKER_ERROR', errorMessage: `${e.name}: ${e.message}` }));
     child.send(job);
   });
 }
+
+// Errors that come from our own process or Chromium, not from bank pages: safe to log in short form
+const LOCAL_ERRORS = new Set(['LAUNCH_ERROR', 'WORKER_ERROR', 'WORKER_EXIT']);
 
 export class SyncManager {
   #vault;
@@ -176,9 +184,11 @@ export class SyncManager {
     db.run('UPDATE connections SET status = ?, status_detail = ? WHERE id = ?', [status, String(result.errorType || 'GENERIC').slice(0, 40), connectionId]);
     vault.save();
     this.#results.set(connectionId, { at: new Date(this.#now()).toISOString(), ok: false, status, errorType: result.errorType || 'GENERIC' });
-    // Only the error type is logged: the library's message may contain page text.
-    // For troubleshooting, BALANCER_SCRAPER_DEBUG=1 also logs a short, digit-masked message.
-    const debug = process.env.BALANCER_SCRAPER_DEBUG === '1' && result.errorMessage ? `: ${String(result.errorMessage).slice(0, 200)}` : '';
+    // The library's message may contain page text, so by default only its error type is logged.
+    // Local errors (browser/worker) are logged in short form; BALANCER_SCRAPER_DEBUG=1 also logs the
+    // library's message for the rest. log() masks digits.
+    const showMessage = result.errorMessage && (LOCAL_ERRORS.has(result.errorType) || process.env.BALANCER_SCRAPER_DEBUG === '1');
+    const debug = showMessage ? `: ${String(result.errorMessage).slice(0, 200)}` : '';
     log('warn', `sync ${conn.provider}: failed (${result.errorType || 'GENERIC'})${debug}`);
   }
 }
