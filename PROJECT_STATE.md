@@ -2,11 +2,12 @@
 
 ## Current Focus
 Phase 1 (foundations) is built and tested in the cloud: 34 tests pass, and the setup/unlock/lock screens were checked in headless Chromium.
-OPEN BLOCKER from Phase 0: on the phone the browser check FAILED. Chromium starts, then the DevTools socket hangs up (`socket hang up`, ECONNRESET). The screenshot also showed `Node.js v26.3.1` at a plain `~ $` prompt, so it may have run in native Termux rather than in Debian.
+Phase 1 runs on the phone (setup screen in Chrome).
+OPEN BLOCKER from Phase 0: Debian Chromium crashes on the phone even without Puppeteer (`--dump-dom` → SIGTRAP; dbus/netlink errors are noise). The real crash line was not visible yet.
 Next steps:
-1. Ron runs `cd ~/balancer && git pull && bash scripts/spike/diagnose.sh` and sends the output (Debian vs Termux, direct Chromium test, 4 flag sets).
-2. Ron runs `bash scripts/install.sh && bash scripts/start.sh` and checks the Phase 1 screens in Chrome.
-3. Then Phase 2 (UI shell in Demo Mode). The browser blocker must be solved before Phase 3.
+1. Ron runs `cd ~/balancer && git pull && bash scripts/spike/diagnose-native.sh` (path B: Termux-native Chromium) and sends the result.
+2. If B fails: `bash scripts/spike/diagnose.sh` again; the new output shows only the crash lines.
+3. Phase 2 (UI shell in Demo Mode) can start in parallel; the browser blocker must be solved before Phase 3 (UI shell in Demo Mode). The browser blocker must be solved before Phase 3.
 
 ## Ron's answers (2026-10-10)
 - Device: Samsung Galaxy S25 FE, Android 16 → phantom-process fix: the Developer options toggle was not found on his Samsung; run checks first, fall back to adb-over-wireless-debugging from Termux if Chromium gets killed (signal 9).
@@ -36,7 +37,7 @@ Next steps:
   - [x] Local server: 127.0.0.1, Host/Origin checks, session token, unlock backoff, auto-lock, CSP (server/app.js)
   - [x] Minimal Hebrew RTL screens: setup / unlock / home / change password (app/)
   - [x] Tests (tests/*.test.js)
-  - [ ] Ron checks it on the phone
+  - [x] Ron checks it on the phone (setup screen renders in Chrome, dark mode)
 - [ ] Phase 2: UI shell in Demo Mode
 - [ ] Phase 3: Scraper integration
 - [ ] Phase 4: Intelligence

@@ -27,3 +27,4 @@ debug/
 *.log
 phase0-results.txt
 phase0-diagnose.txt
+phase0-native.txt

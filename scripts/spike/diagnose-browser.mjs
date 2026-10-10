@@ -16,12 +16,18 @@ console.log(`chromium: ${exe}`);
 const ver = spawnSync(exe, ['--version'], { encoding: 'utf8' });
 console.log(`version: ${(ver.stdout || ver.stderr || String(ver.error)).trim()}`);
 
-// 1) Chromium alone, no Puppeteer
-const direct = spawnSync(exe, [...BROWSER_ARGS, '--headless', '--dump-dom', 'data:text/html,<p>ok</p>'],
-  { encoding: 'utf8', timeout: 60000 });
-const directOk = (direct.stdout || '').includes('<p>ok</p>');
-console.log(`\n[direct --dump-dom] ${directOk ? 'OK' : 'FAIL'} exit=${direct.status} signal=${direct.signal}`);
-if (!directOk) console.log(tail(direct.stderr));
+// 1) Chromium alone, no Puppeteer, with a few flag variants
+const DIRECT = {
+  base: [],
+  inProcessGpu: ['--in-process-gpu', '--disable-software-rasterizer', '--use-gl=disabled'],
+};
+for (const [name, extra] of Object.entries(DIRECT)) {
+  const direct = spawnSync(exe, [...BROWSER_ARGS, '--headless', ...extra, '--dump-dom', 'data:text/html,<p>ok</p>'],
+    { encoding: 'utf8', timeout: 60000 });
+  const ok = (direct.stdout || '').includes('<p>ok</p>');
+  console.log(`\n[direct ${name}] ${ok ? 'OK' : 'FAIL'} exit=${direct.status} signal=${direct.signal}`);
+  if (!ok) console.log(crashLines(direct.stderr));
+}
 
 // 2) Puppeteer with different flag sets
 const SETS = {
@@ -48,6 +54,13 @@ for (const [name, args] of Object.entries(SETS)) {
   } finally {
     await browser?.close().catch(() => {});
   }
+}
+
+// The lines that explain a crash; dbus/netlink/udev errors are harmless noise under proot
+function crashLines(s = '') {
+  const lines = s.split('\n').filter(l => l.trim() && !/dbus|NETLINK|udev|Fontconfig/.test(l));
+  const fatal = lines.filter(l => /FATAL|Check failed|Trace|SIGTRAP|signal|seccomp|sandbox|Operation not permitted|cannot|error while loading/i.test(l));
+  return (fatal.length ? fatal : lines.slice(-6)).slice(0, 10).map(l => '    ' + l.slice(0, 220)).join('\n') || '    (no stderr)';
 }
 
 function tail(s = '', n = 8) {
