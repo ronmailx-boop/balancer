@@ -26,3 +26,4 @@ debug/
 *.har
 *.log
 phase0-results.txt
+phase0-diagnose.txt

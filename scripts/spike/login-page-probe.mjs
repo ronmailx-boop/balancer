@@ -21,7 +21,8 @@ if (!/^https:\/\//.test(url)) {
 }
 if (SCRAPERS[arg]) console.log(`${SCRAPERS[arg].name} needs fields: ${SCRAPERS[arg].loginFields.join(', ')}`);
 
-const browser = await puppeteer.launch({ executablePath: findChromium(), headless: true, args: BROWSER_ARGS });
+const browser = await puppeteer.launch({ executablePath: findChromium(), headless: true, args: BROWSER_ARGS })
+  .catch(e => { console.error('RESULT: FAIL - browser did not start:', e.message.split('\n')[0]); process.exit(1); });
 try {
   const page = await browser.newPage();
   await page.setViewport({ width: 1024, height: 768 });

@@ -6,7 +6,8 @@ import { findChromium, BROWSER_ARGS } from './browser-path.mjs';
 const executablePath = findChromium();
 console.log('chromium:', executablePath);
 const t0 = Date.now();
-const browser = await puppeteer.launch({ executablePath, headless: true, args: BROWSER_ARGS });
+const browser = await puppeteer.launch({ executablePath, headless: true, args: BROWSER_ARGS })
+  .catch(e => { console.error('RESULT: FAIL - browser did not start:', e.message.split('\n')[0]); process.exit(1); });
 try {
   console.log('launched:', await browser.version(), `${Date.now() - t0} ms`);
   const page = await browser.newPage();
