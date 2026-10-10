@@ -4,10 +4,14 @@
 Phase 2 (UI in Demo Mode) is built: 46 tests pass, every screen checked in headless Chromium (light and dark).
 Browser for scraping (Phase 0 blocker): Termux-native Chromium works with --single-process; the full check (example.com + Leumi/Cal/Max login pages) was still running on Ron's phone.
 Next steps:
-0. Ron: `cd ~/balancer && git pull && bash scripts/start.sh`, then enable Demo Mode (empty home screen button or Settings) and look around.
-1. Path B (Termux-native Chromium) first run: Chromium child processes failed with "CANNOT LINK EXECUTABLE /proc/self/exe ... libtermux-exec.so" — Termux LD_PRELOAD. Removing LD_PRELOAD was WRONG: the Termux chromium-browser wrapper then fails with exit 126 (seen in run-checks-native). The singleProcess OK result came from a run that still had LD_PRELOAD. Fix: keep LD_PRELOAD, rely on --single-process. Re-run result: `--single-process` works (puppeteer singleProcess / noFeatures OK); multi-process still fails. Decision: path B = Termux-native Chromium + `--single-process` (auto on process.platform === 'android'). No Debian needed. Next: Ron runs `bash scripts/spike/run-checks-native.sh` again (network + Leumi/Cal/Max login pages). Phase 2 started in parallel (Ron approved).
-2. If B fails: `bash scripts/spike/diagnose.sh` again; the new output shows only the crash lines.
-3. Phase 2 (UI shell in Demo Mode) can start in parallel; the browser blocker must be solved before Phase 3 (UI shell in Demo Mode). The browser blocker must be solved before Phase 3.
+1. Ron: `cd ~/balancer && git pull && bash scripts/start.sh`, enable Demo Mode (button on the empty home screen, or Settings) and check every screen on the phone.
+2. Ron: `bash scripts/spike/run-checks-native.sh` and send the RESULT lines (browser + Leumi/Cal/Max login pages). Must pass before Phase 3.
+3. Then Phase 3: connection UI, encrypted credentials, scrape runner (Termux-native Chromium, --single-process), normalization, dedupe, pending handling.
+
+## Browser history (Phase 0)
+- Path A (proot Debian Chromium) crashes on the S25 FE with SIGTRAP even without Puppeteer. Dropped.
+- Path B (Termux-native `chromium-browser`): multi-process fails ("CANNOT LINK EXECUTABLE /proc/self/exe ... libtermux-exec.so"); `--single-process` works.
+- Removing LD_PRELOAD was wrong: the wrapper then exits with 126. Keep LD_PRELOAD.
 
 ## Ron's answers (2026-10-10)
 - Device: Samsung Galaxy S25 FE, Android 16 → phantom-process fix: the Developer options toggle was not found on his Samsung; run checks first, fall back to adb-over-wireless-debugging from Termux if Chromium gets killed (signal 9).
