@@ -163,6 +163,7 @@ export class SyncManager {
       log('error', `sync ${conn.provider}: could not start (${e.name})`);
     }
 
+    const lastStage = this.#running?.stage;
     this.#running = null;
     if (!vault.unlocked) return; // locked meanwhile: drop the result, nothing is written
 
@@ -189,7 +190,7 @@ export class SyncManager {
     // library's message for the rest. log() masks digits.
     const showMessage = result.errorMessage && (LOCAL_ERRORS.has(result.errorType) || process.env.BALANCER_SCRAPER_DEBUG === '1');
     const debug = showMessage ? `: ${String(result.errorMessage).slice(0, 200)}` : '';
-    log('warn', `sync ${conn.provider}: failed (${result.errorType || 'GENERIC'})${debug}`);
+    log('warn', `sync ${conn.provider}: failed (${result.errorType || 'GENERIC'}) after ${lastStage}${debug}`);
   }
 }
 
