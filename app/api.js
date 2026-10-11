@@ -35,7 +35,7 @@ export async function api(path, { method = 'GET', body } = {}) {
 export function messageFor(err) {
   const wait = err.data?.retryAfterSec;
   switch (err.code) {
-    case 'network': return 'אין חיבור לשרת המקומי. ודא ש-Balancer פועל ב-Termux (scripts/start.sh) ונסה שוב.';
+    case 'network': return 'אין חיבור לשרת המקומי. ודא ש-Balancer פועל: ב-Termux מקלידים balancer.';
     case 'wrong_password': return wait > 1 ? `סיסמה שגויה. אפשר לנסות שוב בעוד ${formatWait(wait)}.` : 'סיסמה שגויה.';
     case 'too_many_attempts': return `יותר מדי ניסיונות. אפשר לנסות שוב בעוד ${formatWait(wait)}.`;
     case 'busy': return 'בודק סיסמה, רגע…';
