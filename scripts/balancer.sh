@@ -6,6 +6,7 @@
 #   balancer update   get the latest version, install, then restart in the background
 #   balancer stop     stop the server (the vault locks)
 #   balancer log      show the server messages
+#   balancer version  show the installed version (the same number Settings shows)
 set -e
 DIR="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
 cd "$DIR"
@@ -69,8 +70,9 @@ case "${1:-start}" in
   auto) auto ;;
   start) exec bash scripts/start.sh ;;
   bg) start_bg ;;
-  update) git pull --ff-only && bash scripts/install.sh && stop_server && start_bg ;;
+  update) git pull --ff-only && bash scripts/install.sh && stop_server && start_bg && echo "Installed: Balancer version 1.$(git rev-list --count HEAD)" ;;
   stop) stop_server && echo "Balancer stopped." ;;
   log) exec tail -n 50 -f data/server.log ;;
-  *) echo "Usage: balancer [bg|update|stop|log]"; exit 1 ;;
+  version) echo "Balancer version 1.$(git rev-list --count HEAD)" ;;
+  *) echo "Usage: balancer [bg|update|stop|log|version]"; exit 1 ;;
 esac
