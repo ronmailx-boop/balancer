@@ -282,10 +282,13 @@ export function insights(db, { month, today }) {
         text: `${c.name}: ${fmt(c.amount)}, ${fmt(Math.abs(diff))} ${diff > 0 ? 'יותר' : 'פחות'} מהממוצע של 3 החודשים שלפני.` });
     }
   }
-  const subs = all(db, "SELECT typical_amount AS amount FROM recurring_items WHERE status = 'active' AND cadence = 'monthly' AND typical_amount < 0");
-  if (subs.length >= 3) {
+  // Same numbers as the recurring screen: rolling credit counts as its fixed payment, plus installments
+  const rec = recurringAndInstallments(db, today);
+  const fixedCount = rec.recurring.filter(r => r.status === 'active' && r.amount < 0).length;
+  const total = r2(rec.totals.monthlyRecurring + rec.totals.installmentsMonthly);
+  if (fixedCount + rec.installments.length >= 3) {
     out.push({ icon: '🔁', level: 'info', link: 'recurring',
-      text: `${subs.length} חיובים חודשיים קבועים בסך ${fmt(-subs.reduce((s, r) => s + r.amount, 0))} בחודש.` });
+      text: `${fixedCount} חיובים קבועים${rec.installments.length ? ` ו-${rec.installments.length} עסקאות בתשלומים` : ''} בסך ${fmt(total)} בחודש.` });
   }
   return out.slice(0, 4);
 }

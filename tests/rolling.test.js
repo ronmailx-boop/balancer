@@ -104,3 +104,15 @@ test('installment plans: finished ones move apart, paid-off ones can be hidden',
   assert.equal(r.installmentsDone.find(i => i.description === 'מקרר').paidOff, true);
   assert.equal(r.totals.installmentsMonthly, 0);
 });
+
+test('the insight total matches the recurring screen (fixed payment + installments)', async () => {
+  const db = await setup();
+  db.run(`INSERT INTO recurring_items (id, merchant, typical_amount, cadence, next_expected, status, account_id, last_date, last_amount, occurrences, source)
+    VALUES ('r1', 'יתרת אשראי מתגלגל', -6747.05, 'monthly', '2026-11-11', 'active', 'cal1', '2026-10-11', -6793.25, 4, 'auto'),
+           ('r2', 'HOT', -171, 'monthly', '2026-10-28', 'active', 'cal1', '2026-09-28', -171, 4, 'auto'),
+           ('r3', 'HOT MOBILE', -129, 'monthly', '2026-10-22', 'active', 'cal1', '2026-09-22', -129, 4, 'auto')`);
+  setFixedPayment(db, 'cal1', 2000);
+  const text = Q.insights(db, { month: '2026-09', today: '2026-10-12' }).find(i => i.link === 'recurring')?.text
+    ?? Q.insights(db, { month: '2026-10', today: '2026-10-12' }).find(i => i.link === 'recurring')?.text;
+  assert.match(text, /2,300/);
+});
