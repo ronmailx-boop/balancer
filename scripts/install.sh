@@ -32,17 +32,9 @@ if [ -n "${PREFIX:-}" ] && [ -d "$PREFIX/bin" ] && [[ "$PREFIX" == *com.termux* 
   printf '#!/data/data/com.termux/files/usr/bin/sh\ntermux-wake-lock\nBALANCER_NO_BROWSER=1 exec bash %s/scripts/start.sh > %s/data/server.log 2>&1\n' "$PWD" "$PWD" > "$HOME/.termux/boot/balancer"
   chmod 700 "$HOME/.termux/boot/balancer"
 
-  # Opening Termux starts Balancer if it is not already running (a block between markers in ~/.bashrc)
-  touch "$HOME/.bashrc"
-  sed -i '/# >>> balancer autostart >>>/,/# <<< balancer autostart <<</d' "$HOME/.bashrc"
-  cat >> "$HOME/.bashrc" <<'RC'
-# >>> balancer autostart >>>
-if [ -z "${BALANCER_NO_AUTOSTART:-}" ] && command -v balancer >/dev/null \
-   && ! curl -fsS -o /dev/null http://127.0.0.1:8765/api/status 2>/dev/null; then
-  balancer auto
-fi
-# <<< balancer autostart <<<
-RC
+  # Earlier versions started Balancer whenever Termux opened (a block in ~/.bashrc). Ron turned
+  # that off, so remove it if it is there.
+  [ -f "$HOME/.bashrc" ] && sed -i '/# >>> balancer autostart >>>/,/# <<< balancer autostart <<</d' "$HOME/.bashrc"
 fi
 
 echo

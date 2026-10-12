@@ -24,6 +24,8 @@ After that the planned phases are complete; further work is by Ron's requests.
 ## Month breakdown (2026-10-12, Ron's request)
 - Tapping הכנסות / הוצאות / נשאר (home and monthly screens) opens a sheet (app/views/flow.js, GET /api/month/flow = Q.monthFlow): totals by category and every counted movement; נשאר shows the calculation, what is not counted (card bills/transfers, excluded) and how "תקציב החודש" differs (only budgeted categories).
 
+- 2026-10-12: Ron asked to remove the autostart on opening Termux (the old version held the session, so typed commands went nowhere). install.sh now deletes the ~/.bashrc block. Start with `balancer`; `balancer auto` (update + start in background) stays available by hand.
+
 ## Launcher
 - The apps launcher (repo my-site, https://apps.vplusstudio.app/) has a balancer tile that opens http://127.0.0.1:8765/#/home (my-site PR #46, Ron confirmed it works). The tile's icon is a copy of app/icon-512.png kept in my-site (icons/balancer-512.png); if the icon changes, update it there too.
 
