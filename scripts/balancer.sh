@@ -10,18 +10,35 @@ set -e
 DIR="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
 cd "$DIR"
 
+running() { curl -fsS -o /dev/null http://127.0.0.1:8765/api/status 2>/dev/null; }
+
+# Finds the server by its pid file, or else by scanning /proc (pgrep is not always installed in Termux)
+server_pids() {
+  [ -f data/server.pid ] && cat data/server.pid
+  local args
+  for d in /proc/[0-9]*; do
+    # Only a node process whose first argument is server/index.js (never a shell that mentions it)
+    args="$(tr '\0' '\n' < "$d/cmdline" 2>/dev/null | head -n 2 | tr '\n' ' ')"
+    case "$args" in
+      node\ server/index.js\ |*/node\ server/index.js\ ) echo "${d#/proc/}" ;;
+    esac
+  done
+  return 0
+}
+
 stop_server() {
-  local pids
-  pids="$(pgrep -f '^node server/index.js' || true)"
-  [ -z "$pids" ] && return 0
-  kill $pids 2>/dev/null || true
-  for _ in $(seq 1 25); do pgrep -f '^node server/index.js' >/dev/null || return 0; sleep 0.2; done
+  running || return 0
+  kill $(server_pids | sort -u) 2>/dev/null || true
+  for _ in $(seq 1 50); do running || return 0; sleep 0.2; done
+  echo "Could not stop the running server. Close Termux completely (notification: Exit) and open it again."
+  return 1
 }
 
 # Runs the server in the background, so the Termux session stays free for commands
 start_bg() {
-  if curl -fsS -o /dev/null http://127.0.0.1:8765/api/status 2>/dev/null; then
+  if running; then
     echo "Balancer is already running."
+    termux-open-url http://127.0.0.1:8765/ 2>/dev/null || true
     return 0
   fi
   mkdir -p data
@@ -32,7 +49,7 @@ start_bg() {
 # Opening Termux: get the latest version if the server is not running yet, then start it.
 # A running server is left alone (it may be in the middle of a sync); it only says an update exists.
 auto() {
-  if curl -fsS -o /dev/null http://127.0.0.1:8765/api/status 2>/dev/null; then
+  if running; then
     if timeout 15 git fetch -q origin 2>/dev/null && [ -n "$(git rev-list HEAD..@{u} 2>/dev/null)" ]; then
       echo "A new Balancer version is available: balancer update"
     fi

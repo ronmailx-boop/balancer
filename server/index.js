@@ -1,4 +1,5 @@
 // Entry point: node server/index.js
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Vault } from './vault.js';
@@ -19,7 +20,17 @@ server.on('error', e => {
   log('error', e.code === 'EADDRINUSE' ? `port ${port} is already in use - is Balancer already running?` : e.message);
   process.exit(1);
 });
-server.listen(port, HOST, () => log('info', `Balancer is running at http://${HOST}:${port}`));
+// The pid file lets `balancer stop` / `balancer update` find this process
+const pidFile = path.join(dataDir, 'server.pid');
+server.listen(port, HOST, () => {
+  fs.writeFileSync(pidFile, String(process.pid), { mode: 0o600 });
+  log('info', `Balancer is running at http://${HOST}:${port}`);
+});
+process.on('exit', () => {
+  try {
+    if (fs.readFileSync(pidFile, 'utf8') === String(process.pid)) fs.rmSync(pidFile);
+  } catch { /* already gone */ }
+});
 
 for (const sig of ['SIGINT', 'SIGTERM']) {
   process.on(sig, () => {
