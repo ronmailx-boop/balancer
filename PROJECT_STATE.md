@@ -18,6 +18,9 @@ After that the planned phases are complete; further work is by Ron's requests.
 - Twice a day when the app is opened: a 07:00 slot and a 19:00 slot (Israel time; 00:00-06:59 belongs to the previous evening). server/autosync.js; triggered from GET /api/overview (home screen), only when unlocked and not in demo.
 - Each slot runs at most once even if it fails (settings.auto_sync_slot); connections synced by hand in the slot, or needing attention, are skipped. Toggle: Settings -> סנכרון אוטומטי (settings.auto_sync, default on).
 
+## Keeping the server up (2026-10-12)
+- Android kills Termux in the background, so the app showed "השרת המקומי לא פועל". install.sh now adds: a ~/.bashrc block that starts Balancer when Termux opens (if not running), a Termux:Boot script (~/.termux/boot/balancer, background, no browser, log in data/server.log), and `balancer stop`; `balancer update` restarts a running server.
+
 ## Launcher
 - The apps launcher (repo my-site, https://apps.vplusstudio.app/) has a balancer tile that opens http://127.0.0.1:8765/#/home (my-site PR #46, Ron confirmed it works). The tile's icon is a copy of app/icon-512.png kept in my-site (icons/balancer-512.png); if the icon changes, update it there too.
 

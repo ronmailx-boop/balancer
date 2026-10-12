@@ -26,6 +26,24 @@ if [ -n "${PREFIX:-}" ] && [ -d "$PREFIX/bin" ] && [[ "$PREFIX" == *com.termux* 
   mkdir -p "$HOME/.shortcuts"
   printf '#!/data/data/com.termux/files/usr/bin/bash\nexec bash %s/scripts/start.sh\n' "$PWD" > "$HOME/.shortcuts/Balancer"
   chmod 700 "$HOME/.shortcuts/Balancer"
+
+  # Start with the phone: the Termux:Boot app runs this after a reboot (in the background, no browser)
+  mkdir -p "$HOME/.termux/boot"
+  printf '#!/data/data/com.termux/files/usr/bin/sh\ntermux-wake-lock\nBALANCER_NO_BROWSER=1 exec bash %s/scripts/start.sh > %s/data/server.log 2>&1\n' "$PWD" "$PWD" > "$HOME/.termux/boot/balancer"
+  chmod 700 "$HOME/.termux/boot/balancer"
+
+  # Opening Termux starts Balancer if it is not already running (a block between markers in ~/.bashrc)
+  touch "$HOME/.bashrc"
+  sed -i '/# >>> balancer autostart >>>/,/# <<< balancer autostart <<</d' "$HOME/.bashrc"
+  cat >> "$HOME/.bashrc" <<'RC'
+# >>> balancer autostart >>>
+if [ -z "${BALANCER_NO_AUTOSTART:-}" ] && command -v balancer >/dev/null \
+   && ! curl -fsS -o /dev/null http://127.0.0.1:8765/api/status 2>/dev/null; then
+  echo "Starting Balancer... (Ctrl+C stops it)"
+  balancer
+fi
+# <<< balancer autostart <<<
+RC
 fi
 
 echo

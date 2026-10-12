@@ -9,7 +9,7 @@ URL="http://127.0.0.1:$PORT/"
 
 # Already running (e.g. in another Termux session): just open it
 if curl -fsS -o /dev/null "${URL}api/status" 2>/dev/null; then
-  termux-open-url "$URL" 2>/dev/null || echo "Balancer is already running: open $URL in Chrome"
+  [ -n "${BALANCER_NO_BROWSER:-}" ] || termux-open-url "$URL" 2>/dev/null || echo "Balancer is already running: open $URL in Chrome"
   exit 0
 fi
 
@@ -20,7 +20,7 @@ trap 'termux-wake-unlock 2>/dev/null || true' EXIT
 (
   for _ in $(seq 1 50); do
     if curl -fsS -o /dev/null "${URL}api/status" 2>/dev/null; then
-      termux-open-url "$URL" 2>/dev/null || echo "Open $URL in Chrome"
+      [ -n "${BALANCER_NO_BROWSER:-}" ] || termux-open-url "$URL" 2>/dev/null || echo "Open $URL in Chrome"
       exit 0
     fi
     sleep 0.2
