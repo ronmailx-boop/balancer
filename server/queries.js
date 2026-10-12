@@ -707,12 +707,18 @@ export function dismissRecurring(db, id, dismissed, today) {
 }
 
 export function recurringAndInstallments(db, today) {
+  const fixed = fixedPayments(db);
   const recurring = all(db, `
     SELECT r.id, r.merchant, r.typical_amount AS amount, r.cadence, r.next_expected AS nextDate, r.status, r.last_date AS lastDate,
            r.last_amount AS lastAmount, r.previous_amount AS previousAmount, r.occurrences, a.display_name AS accountName,
-           a.masked_number AS accountMasked, c.name AS categoryName, c.icon AS categoryIcon
+           a.masked_number AS accountMasked, a.id AS accountId, a.type AS accountType, c.name AS categoryName, c.icon AS categoryIcon
     FROM recurring_items r LEFT JOIN accounts a ON a.id = r.account_id LEFT JOIN categories c ON c.id = r.category_id
-    ORDER BY r.status, r.typical_amount`);
+    ORDER BY r.status, r.typical_amount`).map(r => {
+    // The card's rolling-credit balance line: what is really paid each month is the fixed payment
+    if (r.accountType !== 'card' || !/מתגלגל/.test(r.merchant)) return r;
+    const f = fixedFor(fixed, r.accountId);
+    return { ...r, rolling: true, rollingBalance: r2(r.amount), rollingFixed: f || null, amount: f ? -f : r.amount };
+  });
   // Latest payment per installment plan
   const rows = all(db, `
     SELECT t.description, t.account_id AS accountId, a.display_name AS accountName, t.installment_number AS number,
@@ -729,7 +735,7 @@ export function recurringAndInstallments(db, today) {
   const monthlyFixed = recurring.filter(r => r.status === 'active' && r.amount < 0).reduce((s, r) => s - r.amount * (PER_MONTH[r.cadence] || 1), 0);
   const monthlyIncome = recurring.filter(r => r.status === 'active' && r.amount > 0).reduce((s, r) => s + r.amount * (PER_MONTH[r.cadence] || 1), 0);
   return {
-    recurring: recurring.map(r => ({ ...r, amount: r2(r.amount) })),
+    recurring: recurring.map(r => ({ ...r, amount: r2(r.amount) })).sort((a, b) => (a.status === b.status ? a.amount - b.amount : 0)),
     installments,
     totals: {
       monthlyRecurring: r2(monthlyFixed),

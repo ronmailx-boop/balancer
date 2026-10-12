@@ -118,7 +118,7 @@ async function openCharge(ctx, c) {
 }
 
 // Fixed monthly payment of a card with rolling credit (or none, or back to automatic detection)
-function openFixedEditor(ctx, res) {
+export function openFixedEditor(ctx, res) {
   const input = h('input', { id: 'fixed-amount', type: 'number', inputmode: 'decimal', min: 1, step: '1', value: res.fixed || '', placeholder: 'למשל 2000' });
   const error = h('p', { class: 'error', role: 'alert' });
   const send = async (amount, msg) => {

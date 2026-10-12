@@ -453,3 +453,4 @@ button.stat:active { filter: brightness(1.15); }
 .fixed-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 10px 0 4px; }
 .charge-detail .flow-calc { margin-bottom: 4px; }
 .version-line { font-weight: 700; margin-bottom: 0; }
+.card-total { font-weight: 700; font-size: 0.95rem; }

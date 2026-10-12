@@ -72,3 +72,18 @@ test('a bill line "יתרת אשראי מתגלגל" flags rolling credit until 
   setFixedPayment(db, 'cal1', 2000);
   assert.equal(Q.upcomingCharges(db, '2026-10-12')[0].rollingHint, false);
 });
+
+test('recurring list shows the fixed payment for the rolling-credit line and counts it in the total', async () => {
+  const db = await setup();
+  db.run(`INSERT INTO recurring_items (id, merchant, typical_amount, cadence, next_expected, status, account_id, last_date, last_amount, occurrences, source)
+    VALUES ('r1', 'יתרת אשראי מתגלגל', -6747.05, 'monthly', '2026-11-11', 'active', 'cal1', '2026-10-11', -6793.25, 4, 'auto'),
+           ('r2', 'HOT', -171, 'monthly', '2026-10-28', 'active', 'cal1', '2026-09-28', -171, 4, 'auto')`);
+  let r = Q.recurringAndInstallments(db, '2026-10-12');
+  assert.equal(r.recurring.find(x => x.id === 'r1').rollingFixed, null);
+  setFixedPayment(db, 'cal1', 2000);
+  r = Q.recurringAndInstallments(db, '2026-10-12');
+  const roll = r.recurring.find(x => x.id === 'r1');
+  assert.equal(roll.amount, -2000);
+  assert.equal(roll.rollingBalance, -6747.05);
+  assert.equal(r.totals.monthlyRecurring, 2171);
+});

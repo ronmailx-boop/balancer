@@ -1,5 +1,6 @@
 import { api, messageFor } from '../api.js';
 import { h, card, cardTitle, money, shortDate, emptyState, openSheet, toast, accountLabel } from '../ui.js';
+import { openFixedEditor } from './home.js';
 
 export const title = 'הוראות קבע ותשלומים';
 export const back = 'more';
@@ -21,6 +22,8 @@ export async function render(ctx) {
       h('span', { class: 'list-main' },
         h('span', {}, x.merchant),
         h('span', { class: 'muted small' }, `${CADENCE[x.cadence] || x.cadence} · ${x.status === 'active' ? `הבא ${shortDate(x.nextDate)}` : x.status === 'paused' ? 'סומן כלא קבוע' : `אחרון ${shortDate(x.lastDate)}`}`),
+        x.rolling && h('span', { class: x.rollingFixed ? 'muted small' : 'status-label small warning' },
+          x.rollingFixed ? `חיוב קבוע · יתרה מתגלגלת ${money(-x.rollingBalance)}` : '⚠️ יתרה מתגלגלת. לחץ כדי להגדיר את החיוב הקבוע'),
         priceUp(x) && h('span', { class: 'status-label small warning' }, '⚠️ התייקר')),
       h('span', { class: `list-amount ${x.amount > 0 ? 'pos' : ''}` }, money(x.amount, { sign: x.amount > 0 }))));
 
@@ -31,8 +34,10 @@ export async function render(ctx) {
         h('div', { class: 'stat' }, h('span', { class: 'stat-label' }, 'הכנסות קבועות'), h('span', { class: 'stat-value pos' }, money(r.totals.monthlyRecurringIncome))),
         h('div', { class: 'stat' }, h('span', { class: 'stat-label' }, 'תשלומים'), h('span', { class: 'stat-value' }, money(r.totals.installmentsMonthly)))),
       h('p', { class: 'muted small' }, 'חיובים דו-חודשיים מחושבים כחצי לחודש.')),
-    income.length > 0 && card(cardTitle('הכנסות קבועות'), h('ul', { class: 'list' }, income.map(row))),
-    expenses.length > 0 && card(cardTitle('חיובים קבועים'), h('ul', { class: 'list' }, expenses.map(row))),
+    income.length > 0 && card(cardTitle('הכנסות קבועות', h('span', { class: 'card-total pos' }, `${money(r.totals.monthlyRecurringIncome)} בחודש`)),
+      h('ul', { class: 'list' }, income.map(row))),
+    expenses.length > 0 && card(cardTitle('חיובים קבועים', h('span', { class: 'card-total' }, `${money(r.totals.monthlyRecurring)} בחודש`)),
+      h('ul', { class: 'list' }, expenses.map(row))),
     r.installments.length > 0 && card(cardTitle('עסקאות בתשלומים'),
       h('ul', { class: 'list' }, r.installments.map(i => h('li', { class: 'list-row installment' },
         h('span', { class: 'list-main' },
@@ -61,7 +66,13 @@ function openItem(ctx, x) {
       x.status === 'active' && [h('dt', {}, 'צפוי הבא'), h('dd', {}, shortDate(x.nextDate))],
       x.accountName && [h('dt', {}, 'חשבון'), h('dd', {}, accountLabel(x.accountName, x.accountMasked))],
       x.categoryName && [h('dt', {}, 'קטגוריה'), h('dd', {}, `${x.categoryIcon || ''} ${x.categoryName}`)],
-      h('dt', {}, 'זוהה מתוך'), h('dd', {}, `${x.occurrences} חיובים`)),
+      h('dt', {}, 'זוהה מתוך'), h('dd', {}, `${x.occurrences} חיובים`),
+      x.rolling && [h('dt', {}, 'יתרה מתגלגלת'), h('dd', {}, money(-x.rollingBalance, { decimals: true }))],
+      x.rolling && [h('dt', {}, 'חיוב קבוע'), h('dd', {}, x.rollingFixed ? money(x.rollingFixed) : 'לא הוגדר')]),
+    x.rolling && h('button', { type: 'button', class: 'btn primary', onclick: () => {
+      sheet.close();
+      openFixedEditor(ctx, { account: { id: x.accountId, name: x.accountName, masked: x.accountMasked }, fixed: x.rollingFixed });
+    } }, x.rollingFixed ? 'שינוי החיוב הקבוע' : 'הגדרת החיוב הקבוע'),
     h('div', { class: 'stack' },
       h('button', { type: 'button', class: 'btn', onclick: () => { sheet.close(); ctx.navigate('transactions', { q: x.merchant }); } }, 'כל החיובים האלה'),
       toggle)));
