@@ -39,7 +39,7 @@ if [ -n "${PREFIX:-}" ] && [ -d "$PREFIX/bin" ] && [[ "$PREFIX" == *com.termux* 
 # >>> balancer autostart >>>
 if [ -z "${BALANCER_NO_AUTOSTART:-}" ] && command -v balancer >/dev/null \
    && ! curl -fsS -o /dev/null http://127.0.0.1:8765/api/status 2>/dev/null; then
-  balancer bg
+  balancer auto
 fi
 # <<< balancer autostart <<<
 RC
