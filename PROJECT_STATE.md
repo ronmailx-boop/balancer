@@ -1,8 +1,9 @@
 # PROJECT_STATE — Balancer
 
 ## Current Focus
-Ron is on version 1.52 (2026-10-12) and confirmed everything works: rolling credit (fixed monthly card payment set by hand for Max),
-recurring totals, month breakdown sheets, version number in Settings. No open tasks; next work comes from Ron's requests.
+Ron is on version 1.56 (2026-10-12) and confirmed it works: installments can be marked paid off (finished plans listed apart),
+the fixed-charges total includes active installments, and the recurring insight uses the same total.
+No open tasks; next work comes from Ron's requests.
 
 ## Browser history (Phase 0)
 - Path A (proot Debian Chromium) crashes on the S25 FE with SIGTRAP even without Puppeteer. Dropped.
