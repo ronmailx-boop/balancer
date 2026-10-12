@@ -159,6 +159,12 @@ export function createApp({ vault, appDir, port, idleMs = 5 * 60 * 1000, now = D
     return Number.isInteger(v) && v >= 1 && v <= 60 ? v * 60 * 1000 : idleMs;
   };
   const checkIdle = () => {
+    // A running sync keeps the vault open (screen off mid-sync); the countdown restarts when it ends
+    const st = sync.status();
+    if (st.running || st.queued.length) {
+      lastActivity = now();
+      return;
+    }
     if (vault.unlocked && now() - lastActivity > idleLimit()) {
       log('info', 'auto-lock after inactivity');
       endSession();

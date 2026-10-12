@@ -20,7 +20,7 @@ const freePort = () => new Promise(resolve => {
   const s = net.createServer().listen(0, HOST, () => { const { port } = s.address(); s.close(() => resolve(port)); });
 });
 
-async function start(runner, { minIntervalMs = 60_000 } = {}) {
+async function start(runner, { minIntervalMs = 60_000, idleMs = 24 * 3600_000 } = {}) {
   const port = await freePort();
   const dir = tempDir();
   const clock = { t: Date.parse('2026-10-10T08:00:00Z') };
@@ -31,7 +31,7 @@ async function start(runner, { minIntervalMs = 60_000 } = {}) {
     onProgress('LOGGING_IN');
     return runner(job);
   };
-  const server = createApp({ vault, appDir, port, idleMs: 24 * 3600_000, now: () => clock.t, profilesDir: path.join(dir, 'profiles'), syncRunner, syncMinIntervalMs: minIntervalMs });
+  const server = createApp({ vault, appDir, port, idleMs, now: () => clock.t, profilesDir: path.join(dir, 'profiles'), syncRunner, syncMinIntervalMs: minIntervalMs });
   await new Promise(r => server.listen(port, HOST, r));
   const req = (method, p, body, token) => new Promise((resolve, reject) => {
     const data = body === undefined ? undefined : JSON.stringify(body);
@@ -53,7 +53,7 @@ async function start(runner, { minIntervalMs = 60_000 } = {}) {
     }
     throw new Error('sync did not finish');
   };
-  return { api, dir, vault, clock, calls, waitIdle, close: () => new Promise(r => server.close(r)) };
+  return { api, req, dir, vault, clock, calls, waitIdle, close: () => new Promise(r => server.close(r)) };
 }
 
 test('error types map to statuses; credential errors need the user', () => {
@@ -196,4 +196,22 @@ test('forkRunner reports a browser that cannot start as LAUNCH_ERROR', async () 
   } finally {
     if (prev === undefined) delete process.env.CHROME_PATH; else process.env.CHROME_PATH = prev;
   }
+});
+
+test('auto-lock waits for a running sync (screen off mid-sync)', async t => {
+  let release;
+  const s = await start(() => new Promise(r => { release = () => r(maxFirst); }), { idleMs: 60_000 });
+  t.after(s.close);
+  const { id } = (await s.api('POST', '/api/connections', { provider: 'max', credentials: FAKE })).json;
+  await s.api('POST', '/api/sync', { id });
+  await new Promise(r => setTimeout(r, 20));
+  s.clock.t += 10 * 60_000; // ten idle minutes while the bank site is slow
+  await s.req('GET', '/api/status'); // runs the idle check without counting as activity
+  assert.equal(s.vault.unlocked, true, 'still unlocked during the sync');
+  release();
+  await s.waitIdle();
+  assert.equal(s.vault.db.exec('SELECT COUNT(*) FROM transactions')[0].values[0][0], 5, 'result was saved');
+  s.clock.t += 2 * 60_000;
+  await s.req('GET', '/api/status');
+  assert.equal(s.vault.unlocked, false, 'locks once the sync is over and the idle time passed');
 });
