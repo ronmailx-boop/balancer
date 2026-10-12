@@ -1,12 +1,8 @@
 # PROJECT_STATE — Balancer
 
 ## Current Focus
-Phase 5 (polish and hardening) is built: 82 tests pass, screens checked in headless Chromium.
-Next: Ron runs `cd ~/balancer && git pull && bash scripts/install.sh` once (installs the `balancer` command), then:
-1. Settings -> גיבוי ושחזור -> download a backup and save it off the phone.
-2. Optional: Termux:Widget app -> Balancer icon on the home screen.
-3. Settings -> auto-lock minutes.
-After that the planned phases are complete; further work is by Ron's requests.
+Ron is on version 1.52 (2026-10-12) and confirmed everything works: rolling credit (fixed monthly card payment set by hand for Max),
+recurring totals, month breakdown sheets, version number in Settings. No open tasks; next work comes from Ron's requests.
 
 ## Browser history (Phase 0)
 - Path A (proot Debian Chromium) crashes on the S25 FE with SIGTRAP even without Puppeteer. Dropped.
