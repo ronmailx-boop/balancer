@@ -257,6 +257,11 @@ export function createApp({ vault, appDir, port, idleMs = 5 * 60 * 1000, now = D
       return { demo: isDemo, autoSync, today: todayIso(), range: Q.monthRange(db), ...Q.overview(db, { month: monthParam(url, db), today: todayIso() }) };
     },
 
+    'GET /api/month/flow': async ({ url }) => {
+      const { db } = await data();
+      return Q.monthFlow(db, monthParam(url, db));
+    },
+
     'GET /api/month': async ({ url }) => {
       const { db } = await data();
       return { range: Q.monthRange(db), ...Q.monthDetail(db, monthParam(url, db)) };

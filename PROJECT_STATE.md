@@ -21,6 +21,9 @@ After that the planned phases are complete; further work is by Ron's requests.
 ## Keeping the server up (2026-10-12)
 - Android kills Termux in the background, so the app showed "השרת המקומי לא פועל". install.sh now adds: a ~/.bashrc block that starts Balancer when Termux opens (if not running), a Termux:Boot script (~/.termux/boot/balancer, background, no browser, log in data/server.log), and `balancer stop`; `balancer update` restarts a running server.
 
+## Month breakdown (2026-10-12, Ron's request)
+- Tapping הכנסות / הוצאות / נשאר (home and monthly screens) opens a sheet (app/views/flow.js, GET /api/month/flow = Q.monthFlow): totals by category and every counted movement; נשאר shows the calculation, what is not counted (card bills/transfers, excluded) and how "תקציב החודש" differs (only budgeted categories).
+
 ## Launcher
 - The apps launcher (repo my-site, https://apps.vplusstudio.app/) has a balancer tile that opens http://127.0.0.1:8765/#/home (my-site PR #46, Ron confirmed it works). The tile's icon is a copy of app/icon-512.png kept in my-site (icons/balancer-512.png); if the icon changes, update it there too.
 

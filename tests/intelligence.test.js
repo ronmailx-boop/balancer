@@ -117,3 +117,14 @@ test('insights are short and well formed', async () => {
     for (const i of list) assert.ok(i.text && i.icon && i.level);
   }
 });
+
+test('month flow explains income, expenses and what is not counted', async () => {
+  const db = await demoDb();
+  const f = Q.monthFlow(db, '2026-09');
+  const t = Q.monthTotals(db, '2026-09');
+  assert.equal(f.income.total, t.income);
+  assert.equal(f.expense.total, t.expenses);
+  assert.equal(Math.round(f.expense.categories.reduce((s, c) => s + c.amount, 0) * 100) / 100, t.expenses);
+  assert.ok(f.expense.items.every(i => i.amount > 0 && i.categoryType === 'expense'));
+  assert.ok(f.notCounted.transfers.count > 0, 'card bills are listed as not counted');
+});

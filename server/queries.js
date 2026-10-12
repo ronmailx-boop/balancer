@@ -11,10 +11,12 @@ const COUNTED = "t.is_excluded = 0 AND COALESCE(c.type, 'expense') IN ('expense'
 // Transactions as counted in sums: a split transaction is replaced by its parts (same id, date and
 // account; the part's amount and category). Use instead of "transactions t" in aggregates.
 const COUNTED_TX = `(
-  SELECT id, account_id, date, processed_date, type, description, charged_amount, category_id, user_category_override, is_excluded
+  SELECT id, account_id, date, processed_date, type, description, charged_amount, category_id, user_category_override, is_excluded,
+         installment_number, installment_total
   FROM transactions WHERE id NOT IN (SELECT transaction_id FROM transaction_splits)
   UNION ALL
-  SELECT x.id, x.account_id, x.date, x.processed_date, x.type, x.description, s.amount, s.category_id, s.category_id, x.is_excluded
+  SELECT x.id, x.account_id, x.date, x.processed_date, x.type, x.description, s.amount, s.category_id, s.category_id, x.is_excluded,
+         x.installment_number, x.installment_total
   FROM transaction_splits s JOIN transactions x ON x.id = s.transaction_id)`;
 
 export function all(db, sql, params = []) {
@@ -281,6 +283,44 @@ export function monthDetail(db, month) {
     ...monthTotals(db, month),
     previous: monthTotals(db, prev),
     categories: categoryBreakdown(db, month),
+  };
+}
+
+// What makes up a month's income, expenses and what is left: the counted movements by category,
+// and what was left out of the sums (card bills and transfers, excluded transactions).
+export function monthFlow(db, month) {
+  const [from, to] = bounds(db, month);
+  const rows = all(db, `
+    SELECT t.id, t.date, ${EFF_DATE} AS effDate, t.description, t.type, t.charged_amount AS amount, ${EFF_CAT} AS categoryId,
+           c.name AS categoryName, c.icon AS categoryIcon, COALESCE(c.type, 'expense') AS categoryType, t.is_excluded AS excluded,
+           a.display_name AS accountName, a.masked_number AS accountMasked,
+           t.installment_number AS installmentNumber, t.installment_total AS installmentTotal
+    FROM ${COUNTED_TX} t JOIN accounts a ON a.id = t.account_id LEFT JOIN categories c ON c.id = ${EFF_CAT}
+    WHERE ${EFF_DATE} >= ? AND ${EFF_DATE} < ?
+    ORDER BY ${EFF_DATE} DESC, ABS(t.charged_amount) DESC`, [from, to]);
+  const side = type => {
+    const items = rows.filter(r => !r.excluded && r.categoryType === type)
+      .map(r => ({ ...r, amount: r2(type === 'income' ? r.amount : -r.amount), excluded: false }));
+    const byCat = new Map();
+    for (const r of items) {
+      const k = r.categoryId ?? 'none';
+      const c = byCat.get(k) || { id: r.categoryId, name: r.categoryName || 'ללא קטגוריה', icon: r.categoryIcon || '❔', amount: 0, count: 0 };
+      c.amount = r2(c.amount + r.amount);
+      c.count++;
+      byCat.set(k, c);
+    }
+    return { total: r2(items.reduce((s, r) => s + r.amount, 0)), categories: [...byCat.values()].sort((a, b) => b.amount - a.amount), items };
+  };
+  const sumOf = list => ({ count: list.length, amount: r2(list.reduce((s, r) => s + Math.abs(r.amount), 0)) });
+  return {
+    month,
+    range: [from, to],
+    income: side('income'),
+    expense: side('expense'),
+    notCounted: {
+      transfers: sumOf(rows.filter(r => !r.excluded && (r.categoryType === 'transfer' || r.categoryType === 'ignore'))),
+      excluded: sumOf(rows.filter(r => r.excluded)),
+    },
   };
 }
 

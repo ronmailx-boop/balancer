@@ -1,6 +1,7 @@
 import { api, messageFor } from '../api.js';
 import { h, card, cardTitle, money, monthLabel, relativeDays, progress, budgetStatus, emptyState, shortDate, cycleRange, accountLabel, openSheet, toast } from '../ui.js';
 import { openBalancePicker } from './prefs.js';
+import { openFlow } from './flow.js';
 import { txRow, openDetail } from './transactions.js';
 import { rankedBars } from '../charts.js';
 
@@ -40,9 +41,9 @@ export async function render(ctx) {
 
     card(cardTitle(monthLabel(o.month), range && h('span', { class: 'muted small' }, range)),
       h('div', { class: 'stats' },
-        stat('הכנסות', money(o.income), 'pos'),
-        stat('הוצאות', money(o.expenses)),
-        stat('נשאר', money(net, { sign: true }), net >= 0 ? 'pos' : 'neg')),
+        stat('הכנסות', money(o.income), 'pos', () => openFlow(ctx, o.month, 'income')),
+        stat('הוצאות', money(o.expenses), '', () => openFlow(ctx, o.month, 'expense')),
+        stat('נשאר', money(net, { sign: true }), net >= 0 ? 'pos' : 'neg', () => openFlow(ctx, o.month, 'net', o.budget))),
       o.budget && h('div', { class: 'budget-line' },
         h('div', { class: 'budget-line-top' },
           h('span', {}, 'תקציב החודש'),
@@ -110,8 +111,10 @@ function updatedLabel(accounts) {
   return `עודכן ${date} בשעה ${time}`;
 }
 
-function stat(label, value, cls = '') {
-  return h('div', { class: 'stat' }, h('span', { class: 'stat-label' }, label), h('span', { class: `stat-value ${cls}` }, value));
+export function stat(label, value, cls = '', onclick) {
+  return h(onclick ? 'button' : 'div', { class: 'stat', ...(onclick ? { type: 'button', onclick, 'aria-label': `${label}: פירוט` } : {}) },
+    h('span', { class: 'stat-label' }, label, onclick && h('span', { class: 'stat-more', 'aria-hidden': 'true' }, ' ‹')),
+    h('span', { class: `stat-value ${cls}` }, value));
 }
 
 export function statusIcon(level) {

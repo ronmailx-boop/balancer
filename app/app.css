@@ -440,3 +440,13 @@ form .pair > div { display: flex; flex-direction: column; gap: 6px; min-width: 0
 .insight > span:nth-child(2) { flex: 1; }
 .insight-icon { font-size: 1.2rem; }
 .card > .btn + .btn, .card > .btn + details { margin-top: 10px; }
+
+/* Tappable summary boxes and their breakdown */
+button.stat { border: none; font: inherit; color: inherit; text-align: start; cursor: pointer; }
+button.stat:active { filter: brightness(1.15); }
+.stat-more { color: var(--primary); font-weight: 700; }
+.flow .field-title { margin-top: 14px; }
+.flow-calc { background: var(--surface-2); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 6px; }
+.flow-line { display: flex; justify-content: space-between; gap: 8px; font-weight: 600; }
+.flow-total { border-top: 1px solid var(--border); padding-top: 6px; font-size: 1.1rem; }
+.flow-notes { margin: 0; padding-inline-start: 18px; display: flex; flex-direction: column; gap: 6px; color: var(--muted); font-size: 0.9rem; }

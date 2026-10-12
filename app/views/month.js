@@ -1,7 +1,8 @@
 import { api } from '../api.js';
 import { h, card, cardTitle, money, progress, budgetStatus, emptyState } from '../ui.js';
 import { rankedBars } from '../charts.js';
-import { statusIcon } from './home.js';
+import { statusIcon, stat } from './home.js';
+import { openFlow } from './flow.js';
 
 export const title = 'חודשי';
 export const usesMonth = true;
@@ -15,9 +16,9 @@ export async function render(ctx) {
   return [
     card(cardTitle('הכנסות מול הוצאות'),
       h('div', { class: 'stats' },
-        h('div', { class: 'stat' }, h('span', { class: 'stat-label' }, 'הכנסות'), h('span', { class: 'stat-value pos' }, money(m.income))),
-        h('div', { class: 'stat' }, h('span', { class: 'stat-label' }, 'הוצאות'), h('span', { class: 'stat-value' }, money(m.expenses))),
-        h('div', { class: 'stat' }, h('span', { class: 'stat-label' }, 'נטו'), h('span', { class: `stat-value ${m.net >= 0 ? 'pos' : 'neg'}` }, money(m.net, { sign: true })))),
+        stat('הכנסות', money(m.income), 'pos', () => openFlow(ctx, m.month, 'income')),
+        stat('הוצאות', money(m.expenses), '', () => openFlow(ctx, m.month, 'expense')),
+        stat('נטו', money(m.net, { sign: true }), m.net >= 0 ? 'pos' : 'neg', () => openFlow(ctx, m.month, 'net'))),
       m.previous.expenses > 0 && h('p', { class: 'muted small compare' },
         diff > 0 ? `הוצאת ${money(diff)} יותר מהחודש הקודם` : `הוצאת ${money(-diff)} פחות מהחודש הקודם`)),
 
