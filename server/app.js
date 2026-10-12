@@ -69,6 +69,23 @@ export function createApp({ vault, appDir, port, idleMs = 5 * 60 * 1000, now = D
   let lastActivity = now();
   let unlockBusy = false;
 
+  // The newest change time of the app's files: an open page that loaded an older version reloads
+  let versionCache = { at: 0, value: '' };
+  const appVersion = () => {
+    if (now() - versionCache.at < 5000) return versionCache.value;
+    let latest = 0;
+    const walk = dir => {
+      for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+        const p = path.join(dir, e.name);
+        if (e.isDirectory()) walk(p);
+        else latest = Math.max(latest, fs.statSync(p).mtimeMs);
+      }
+    };
+    try { walk(appDir); } catch { /* keep the old value */ }
+    versionCache = { at: now(), value: String(Math.floor(latest)) };
+    return versionCache.value;
+  };
+
   const startSession = () => {
     const token = crypto.randomBytes(32).toString('base64url');
     tokenHash = sha256(token);
@@ -180,6 +197,7 @@ export function createApp({ vault, appDir, port, idleMs = 5 * 60 * 1000, now = D
       initialized: vault.initialized,
       unlocked: vault.unlocked,
       retryAfterSec: Math.ceil(limiter.retryAfterMs() / 1000),
+      version: appVersion(),
     }),
 
     'POST /api/setup': async ({ body }) => {

@@ -5,6 +5,7 @@ import { restoreBackup } from './backup.js';
 const $ = id => document.getElementById(id);
 const AUTH_VIEWS = ['loading', 'setup', 'unlock', 'offline', 'restore'];
 let retryTimer = null;
+let loadedVersion = null;
 let shell = null;
 
 function showAuth(view) {
@@ -29,6 +30,9 @@ async function route() {
   clearTimeout(retryTimer);
   try {
     const status = await api('status');
+    // A new version was installed since this page loaded: load it (the session token survives)
+    if (loadedVersion && status.version && status.version !== loadedVersion) return location.reload();
+    loadedVersion = status.version;
     if (!status.initialized) return showAuth('setup');
     if (status.unlocked && session.token) {
       try {

@@ -9,6 +9,7 @@ import { createApp, HOST } from '../server/app.js';
 import { TEST_KDF, tempDir } from './helpers.js';
 
 const appDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../app');
+const pick = ({ initialized, unlocked, retryAfterSec }) => ({ initialized, unlocked, retryAfterSec });
 const PW = 'correct-horse-1';
 
 function freePort() {
@@ -109,7 +110,7 @@ test('POST requires JSON (blocks simple form CSRF)', async t => {
 test('setup -> token -> protected route; no token or wrong token is refused', async t => {
   const s = await start();
   t.after(s.close);
-  assert.deepEqual((await s.req('GET', '/api/status')).json, { initialized: false, unlocked: false, retryAfterSec: 0 });
+  assert.deepEqual(pick((await s.req('GET', '/api/status')).json), { initialized: false, unlocked: false, retryAfterSec: 0 });
   assert.equal((await s.req('POST', '/api/setup', { body: { password: 'short' } })).json.error, 'weak_password');
 
   const setup = await s.req('POST', '/api/setup', { body: { password: PW } });
@@ -302,7 +303,7 @@ test('wipe needs the password and removes the vault', async t => {
   assert.equal((await s.req('GET', '/api/status')).json.initialized, true);
   s.clock.t += 5000; // past the backoff
   assert.equal((await s.req('POST', '/api/wipe', { token, body: { password: PW } })).status, 200);
-  assert.deepEqual((await s.req('GET', '/api/status')).json, { initialized: false, unlocked: false, retryAfterSec: 0 });
+  assert.deepEqual(pick((await s.req('GET', '/api/status')).json), { initialized: false, unlocked: false, retryAfterSec: 0 });
 });
 
 test('auto-lock follows the user setting', async t => {
