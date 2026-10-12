@@ -155,7 +155,8 @@ export function upcomingCharges(db, today) {
     WHERE cc.charge_date >= ? ORDER BY cc.charge_date`, [today]).map(c => {
     const f = fixedFor(fixed, c.accountId);
     const { debit, rolled } = splitBill(c.amount, f);
-    return { ...c, amount: debit, total: r2(c.amount), rolled, fixed: f || null, fixedSource: f ? fixed[c.accountId].source : null };
+    const rollingHint = !f && Boolean(one(db, "SELECT 1 AS x FROM transactions WHERE account_id = ? AND COALESCE(processed_date, date) = ? AND description LIKE '%מתגלגל%'", [c.accountId, c.date]));
+    return { ...c, amount: debit, total: r2(c.amount), rolled, fixed: f || null, fixedSource: f ? fixed[c.accountId].source : null, rollingHint };
   });
 }
 
@@ -398,7 +399,9 @@ export function cardCharge(db, accountId, date) {
   const total = r2(bill ? bill.amount : -items.reduce((s, t) => s + t.amount, 0));
   const f = fixedPayments(db)[accountId];
   const { debit, rolled } = splitBill(total, f?.amount || 0);
-  return { account, date, amount: total, debit, rolled, fixed: f && f.amount > 0 ? f.amount : null, fixedSource: f?.source || null, items };
+  // Max lists the rolled-over balance as a line of the bill ("יתרת אשראי מתגלגל")
+  const rollingHint = items.some(t => /מתגלגל/.test(t.description));
+  return { account, date, amount: total, debit, rolled, fixed: f && f.amount > 0 ? f.amount : null, fixedSource: f?.source || null, rollingHint, items };
 }
 
 function safeTags(s) {

@@ -68,7 +68,8 @@ export async function render(ctx) {
         h('button', { type: 'button', class: 'list-row list-button', onclick: () => openCharge(ctx, c) },
           h('span', { class: 'list-icon', 'aria-hidden': 'true' }, '💳'),
           h('span', { class: 'list-main' }, h('span', {}, accountLabel(c.name, c.masked)), h('span', { class: 'muted small' }, `יורד מהעו"ש ${relativeDays(c.date, o.today)} (${shortDate(c.date)})`),
-            c.rolled > 0 && h('span', { class: 'muted small' }, `חיוב קבוע · ${money(c.rolled)} עובר לאשראי מתגלגל`)),
+            c.rolled > 0 && h('span', { class: 'muted small' }, `חיוב קבוע · ${money(c.rolled)} עובר לאשראי מתגלגל`),
+            c.rollingHint && h('span', { class: 'status-label small warning' }, '⚠️ אשראי מתגלגל: לחץ כדי להגדיר את החיוב הקבוע')),
           h('span', { class: 'list-amount' }, money(c.amount)),
           h('span', { class: 'list-chevron', 'aria-hidden': 'true' }, '‹')))))),
 
@@ -94,7 +95,9 @@ async function openCharge(ctx, c) {
     return toast(messageFor(err));
   }
   const line = (label, value, cls = '') => h('div', { class: 'flow-line' }, h('span', {}, label), h('span', { class: cls }, value));
-  const fixedText = res.fixed
+  const fixedText = !res.fixed && res.rollingHint
+    ? 'בחיוב הזה יש יתרת אשראי מתגלגל, אבל עוד לא ידוע כמה יורד מהעו"ש כל חודש. לחץ "שינוי" והזן את החיוב הקבוע.'
+    : res.fixed
     ? `חיוב חודשי קבוע (אשראי מתגלגל): ${money(res.fixed)}${res.fixedSource === 'auto' ? ' · זוהה אוטומטית' : ''}`
     : 'אין חיוב חודשי קבוע בכרטיס הזה (כל החיוב יורד מהעו"ש).';
   const sheet = openSheet(`${accountLabel(res.account.name, res.account.masked)} · ${shortDate(res.date)}`, h('div', { class: 'charge-detail' },

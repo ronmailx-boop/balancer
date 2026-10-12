@@ -62,3 +62,13 @@ test('two cards of the same company: a debit must name the card digits', async (
   db.run("UPDATE transactions SET description = 'כאל 9531 חיוב' WHERE account_id = 'bank'");
   assert.deepEqual(detectFixedPayments(db, '2026-10-12'), { cal1: 2000 });
 });
+
+test('a bill line "יתרת אשראי מתגלגל" flags rolling credit until a fixed amount is known', async () => {
+  const db = await setup();
+  db.run(`INSERT INTO transactions (id, account_id, date, processed_date, description, original_amount, charged_amount, type)
+    VALUES ('roll', 'cal1', '2026-10-09', '2026-11-10', 'יתרת אשראי מתגלגל', -6793, -6793, 'normal')`);
+  assert.equal(Q.upcomingCharges(db, '2026-10-12')[0].rollingHint, true);
+  assert.equal(Q.cardCharge(db, 'cal1', '2026-11-10').rollingHint, true);
+  setFixedPayment(db, 'cal1', 2000);
+  assert.equal(Q.upcomingCharges(db, '2026-10-12')[0].rollingHint, false);
+});
