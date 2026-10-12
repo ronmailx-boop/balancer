@@ -19,7 +19,7 @@ After that the planned phases are complete; further work is by Ron's requests.
 - Each slot runs at most once even if it fails (settings.auto_sync_slot); connections synced by hand in the slot, or needing attention, are skipped. Toggle: Settings -> סנכרון אוטומטי (settings.auto_sync, default on).
 
 ## Keeping the server up (2026-10-12)
-- Android kills Termux in the background, so the app showed "השרת המקומי לא פועל". install.sh now adds: a ~/.bashrc block that starts Balancer when Termux opens (if not running), a Termux:Boot script (~/.termux/boot/balancer, background, no browser, log in data/server.log), and `balancer stop`; `balancer update` restarts a running server.
+- Android kills Termux in the background, so the app showed "השרת המקומי לא פועל". install.sh now adds: a ~/.bashrc block that starts Balancer when Termux opens (if not running), a Termux:Boot script (~/.termux/boot/balancer, background, no browser, log in data/server.log), and `balancer stop`; `balancer update` restarts a running server. Since 2026-10-12 the Termux autostart and `balancer update` run the server in the background (`balancer bg`, log in data/server.log, `balancer log`), so the session stays free for commands.
 
 ## Month breakdown (2026-10-12, Ron's request)
 - Tapping הכנסות / הוצאות / נשאר (home and monthly screens) opens a sheet (app/views/flow.js, GET /api/month/flow = Q.monthFlow): totals by category and every counted movement; נשאר shows the calculation, what is not counted (card bills/transfers, excluded) and how "תקציב החודש" differs (only budgeted categories).

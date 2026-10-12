@@ -19,8 +19,10 @@ After that:
 
 ```bash
 balancer          # starts the server and opens Chrome at http://127.0.0.1:8765 (or just opens it if already running)
-balancer update   # git pull + install + restart
+balancer bg       # start in the background (opening Termux does this)
+balancer update   # git pull + install + restart in the background
 balancer stop     # stop the server
+balancer log      # show the server messages
 ```
 
 Opening Termux starts Balancer by itself when it is not running (a marked block in `~/.bashrc`; set `BALANCER_NO_AUTOSTART=1` to skip). With the **Termux:Boot** app installed, it also starts in the background after a reboot (log: `data/server.log`).
