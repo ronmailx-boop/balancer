@@ -8,6 +8,7 @@ import { UnlockLimiter } from './ratelimit.js';
 import { schemaVersion, openDatabase, migrate } from './db.js';
 import { log } from './log.js';
 import * as Q from './queries.js';
+import { releaseVersion } from './version.js';
 import { generateDemo, isoDate } from '../shared/demo.js';
 import { detectRecurring } from '../shared/recurring.js';
 import { detectFixedPayments, setFixedPayment } from './rolling.js';
@@ -68,6 +69,9 @@ export function createApp({ vault, appDir, port, idleMs = 5 * 60 * 1000, now = D
   let tokenHash = null; // sha256 of the current session token
   let lastActivity = now();
   let unlockBusy = false;
+
+  const release = releaseVersion(); // fixed for the life of this server process
+  log('info', `version ${release}`);
 
   // The newest change time of the app's files: an open page that loaded an older version reloads
   let versionCache = { at: 0, value: '' };
@@ -258,6 +262,7 @@ export function createApp({ vault, appDir, port, idleMs = 5 * 60 * 1000, now = D
     },
 
     'GET /api/info': async () => ({
+      version: release,
       schemaVersion: schemaVersion(vault.db),
       idleMinutes: Math.round(idleLimit() / 60000),
       demo: demoEnabled(),

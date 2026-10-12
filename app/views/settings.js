@@ -215,6 +215,7 @@ export async function render(ctx) {
       exportBtn,
       h('button', { type: 'button', class: 'btn', onclick: () => ctx.navigate('categories') }, '🏷️ קטגוריות וחוקים'),
       h('details', { class: 'section danger-zone' }, h('summary', {}, 'מחיקת כל הנתונים'), wipeForm)),
-    h('p', { class: 'muted small center' }, `Balancer · מבנה נתונים גרסה ${info.schemaVersion}`),
+    h('p', { class: 'version-line center' }, `Balancer גרסה ${info.version}`),
+    h('p', { class: 'muted small center' }, `מבנה נתונים ${info.schemaVersion}`),
   ];
 }

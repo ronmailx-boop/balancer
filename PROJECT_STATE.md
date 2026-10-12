@@ -31,6 +31,9 @@ After that the planned phases are complete; further work is by Ron's requests.
 - Upcoming charges, projection, the low-balance alert and the account card use the fixed amount; the bill sheet shows total / debit / rolled and a "שינוי" editor (amount, 0 = none, null = back to detection).
 - Unknown: whether Leumi's debit text includes the card digits. If not, Ron's two Cal cards are not detected and he sets them by hand.
 
+## Version number (2026-10-12)
+- Settings shows "Balancer גרסה 1.<commit count>" (server/version.js, `git rev-list --count HEAD`). After each push, tell Ron the number he should see after `balancer update` (run the same command here after committing).
+
 ## Launcher
 - The apps launcher (repo my-site, https://apps.vplusstudio.app/) has a balancer tile that opens http://127.0.0.1:8765/#/home (my-site PR #46, Ron confirmed it works). The tile's icon is a copy of app/icon-512.png kept in my-site (icons/balancer-512.png); if the icon changes, update it there too.
 
