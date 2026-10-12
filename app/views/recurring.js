@@ -16,6 +16,8 @@ export async function render(ctx) {
   const expenses = active.filter(x => x.amount < 0);
   const income = active.filter(x => x.amount > 0);
   const inactive = r.recurring.filter(x => x.status !== 'active');
+  // What leaves every month: fixed charges plus the active installment payments
+  const monthlyAll = Math.round((r.totals.monthlyRecurring + r.totals.installmentsMonthly) * 100) / 100;
   const row = x => h('li', {},
     h('button', { type: 'button', class: 'list-row list-button', onclick: () => openItem(ctx, x) },
       h('span', { class: 'list-icon', 'aria-hidden': 'true' }, x.categoryIcon || '🔁'),
@@ -36,7 +38,9 @@ export async function render(ctx) {
       h('p', { class: 'muted small' }, 'חיובים דו-חודשיים מחושבים כחצי לחודש.')),
     income.length > 0 && card(cardTitle('הכנסות קבועות', h('span', { class: 'card-total pos' }, `${money(r.totals.monthlyRecurringIncome)} בחודש`)),
       h('ul', { class: 'list' }, income.map(row))),
-    expenses.length > 0 && card(cardTitle('חיובים קבועים', h('span', { class: 'card-total' }, `${money(r.totals.monthlyRecurring)} בחודש`)),
+    expenses.length > 0 && card(cardTitle('חיובים קבועים', h('span', { class: 'card-total' }, `${money(monthlyAll)} בחודש`)),
+      r.totals.installmentsMonthly > 0 && h('p', { class: 'muted small' },
+        `${money(r.totals.monthlyRecurring)} חיובים קבועים + ${money(r.totals.installmentsMonthly)} עסקאות בתשלומים`),
       h('ul', { class: 'list' }, expenses.map(row))),
     r.installments.length > 0 && card(cardTitle('עסקאות בתשלומים', h('span', { class: 'card-total' }, `${money(r.totals.installmentsMonthly)} בחודש`)),
       h('ul', { class: 'list' }, r.installments.map(i => installmentRow(ctx, i)))),
