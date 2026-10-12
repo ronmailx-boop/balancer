@@ -10,6 +10,7 @@ import { log } from './log.js';
 import * as Q from './queries.js';
 import { generateDemo, isoDate } from '../shared/demo.js';
 import { detectRecurring } from '../shared/recurring.js';
+import { detectFixedPayments, setFixedPayment } from './rolling.js';
 import { takeAutoSyncSlot, autoSyncEnabled } from './autosync.js';
 import { seedCategories } from '../shared/categories.js';
 import { SyncManager, credentialAad, removeProfile, connectionsList } from './sync.js';
@@ -96,6 +97,7 @@ export function createApp({ vault, appDir, port, idleMs = 5 * 60 * 1000, now = D
   const refreshRecurring = () => {
     try {
       detectRecurring(vault.db, todayIso());
+      detectFixedPayments(vault.db, todayIso());
       vault.save();
     } catch (e) {
       log('error', `recurring detection failed (${e.message})`);
@@ -337,6 +339,19 @@ export function createApp({ vault, appDir, port, idleMs = 5 * 60 * 1000, now = D
         save();
       }
       return { ...Q.prefs(db), currentMonth: Q.cycleMonth(todayIso(), Q.cycleDay(db)) };
+    },
+
+    // Fixed monthly payment of a card with rolling credit: a number, 0 = no rolling credit, null = detect
+    'POST /api/card-fixed': async ({ body }) => {
+      const { db, save } = await data();
+      const card = Q.one(db, "SELECT id FROM accounts WHERE id = ? AND type = 'card'", [String(body.accountId || '')]);
+      if (!card) throw new ApiError(404, 'not_found');
+      const amount = body.amount;
+      if (amount !== null && !(typeof amount === 'number' && Number.isFinite(amount) && amount >= 0 && amount <= 1_000_000)) throw new ApiError(400, 'bad_request');
+      setFixedPayment(db, card.id, amount);
+      if (amount === null) detectFixedPayments(db, todayIso());
+      save();
+      return { ok: true };
     },
 
     'GET /api/card-charge': async ({ url }) => {

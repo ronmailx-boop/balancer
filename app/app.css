@@ -450,3 +450,5 @@ button.stat:active { filter: brightness(1.15); }
 .flow-line { display: flex; justify-content: space-between; gap: 8px; font-weight: 600; }
 .flow-total { border-top: 1px solid var(--border); padding-top: 6px; font-size: 1.1rem; }
 .flow-notes { margin: 0; padding-inline-start: 18px; display: flex; flex-direction: column; gap: 6px; color: var(--muted); font-size: 0.9rem; }
+.fixed-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 10px 0 4px; }
+.charge-detail .flow-calc { margin-bottom: 4px; }

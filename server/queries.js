@@ -1,6 +1,7 @@
 // Read models for the UI. All money is ILS; expenses are negative in the DB and returned positive here.
 import { categorize, sortRules, normalizeText, ruleMatches } from '../shared/categorize.js';
 import { detectRecurring, dismissedIds } from '../shared/recurring.js';
+import { fixedPayments, fixedFor, splitBill } from './rolling.js';
 
 // Installments count in the month they are charged; everything else by purchase date
 const EFF_DATE = "COALESCE(CASE WHEN t.type = 'installments' THEN t.processed_date END, t.date)";
@@ -132,14 +133,30 @@ export function accountsOverview(db) {
   const included = new Set(balanceAccountIds(db));
   const total = accounts.filter(a => included.has(a.id)).reduce((s, a) => s + (a.balance || 0), 0);
   const bankCount = accounts.filter(a => a.type !== 'card').length;
-  return { total: r2(total), accounts: accounts.map(a => ({ ...a, inBalance: included.has(a.id) })), partial: included.size < bankCount };
+  const fixed = fixedPayments(db);
+  return {
+    total: r2(total),
+    accounts: accounts.map(a => {
+      const f = a.type === 'card' ? fixedFor(fixed, a.id) : 0;
+      // A card's balance is minus its next bill; with rolling credit only the fixed payment leaves the bank
+      return { ...a, inBalance: included.has(a.id), ...(f ? { fixedPayment: f, nextDebit: splitBill(-(a.balance || 0), f).debit } : {}) };
+    }),
+    partial: included.size < bankCount,
+  };
 }
 
+// amount = what will actually leave the bank; with rolling credit that is the fixed monthly payment,
+// and total / rolled show the full bill and the part that rolls over to next month.
 export function upcomingCharges(db, today) {
+  const fixed = fixedPayments(db);
   return all(db, `
     SELECT cc.account_id AS accountId, a.display_name AS name, a.masked_number AS masked, cc.charge_date AS date, cc.amount AS amount
     FROM card_charges cc JOIN accounts a ON a.id = cc.account_id
-    WHERE cc.charge_date >= ? ORDER BY cc.charge_date`, [today]).map(c => ({ ...c, amount: r2(c.amount) }));
+    WHERE cc.charge_date >= ? ORDER BY cc.charge_date`, [today]).map(c => {
+    const f = fixedFor(fixed, c.accountId);
+    const { debit, rolled } = splitBill(c.amount, f);
+    return { ...c, amount: debit, total: r2(c.amount), rolled, fixed: f || null, fixedSource: f ? fixed[c.accountId].source : null };
+  });
 }
 
 export function overview(db, { month, today }) {
@@ -378,7 +395,10 @@ export function cardCharge(db, accountId, date) {
     WHERE t.account_id = ? AND COALESCE(t.processed_date, t.date) = ?
     ORDER BY t.date DESC, t.id`, [accountId, date]).map(txRow);
   const bill = one(db, 'SELECT amount FROM card_charges WHERE account_id = ? AND charge_date = ?', [accountId, date]);
-  return { account, date, amount: r2(bill ? bill.amount : -items.reduce((s, t) => s + t.amount, 0)), items };
+  const total = r2(bill ? bill.amount : -items.reduce((s, t) => s + t.amount, 0));
+  const f = fixedPayments(db)[accountId];
+  const { debit, rolled } = splitBill(total, f?.amount || 0);
+  return { account, date, amount: total, debit, rolled, fixed: f && f.amount > 0 ? f.amount : null, fixedSource: f?.source || null, items };
 }
 
 function safeTags(s) {
@@ -657,7 +677,9 @@ export function projection(db, today) {
   // Card subscriptions are inside the card bill; only bank-side items move the bank balance
   const bankRecurring = ids.length ? all(db, `SELECT merchant, typical_amount AS amount, next_expected AS date FROM recurring_items
     WHERE status = 'active' AND next_expected > ? AND next_expected < ? AND account_id IN (${ids.map(() => '?').join(',')})`, [today, end, ...ids]) : [];
-  const cardBills = all(db, 'SELECT amount, charge_date AS date FROM card_charges WHERE charge_date > ? AND charge_date < ?', [today, end]);
+  const fixed = fixedPayments(db);
+  const cardBills = all(db, 'SELECT account_id, amount, charge_date AS date FROM card_charges WHERE charge_date > ? AND charge_date < ?', [today, end])
+    .map(c => ({ ...c, amount: splitBill(c.amount, fixedFor(fixed, c.account_id)).debit }));
   const expected = bankRecurring.reduce((s, r) => s + r.amount, 0) - cardBills.reduce((s, c) => s + c.amount, 0);
   return {
     today: r2(bank),

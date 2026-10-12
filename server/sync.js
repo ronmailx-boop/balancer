@@ -7,6 +7,7 @@ import { all, one } from './queries.js';
 import { normalizeResult } from '../shared/normalize.js';
 import { mergeScrape } from './merge.js';
 import { detectRecurring } from '../shared/recurring.js';
+import { detectFixedPayments } from './rolling.js';
 import { log } from './log.js';
 
 const WORKER = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../scraper/worker.js');
@@ -173,6 +174,7 @@ export class SyncManager {
         const normalized = normalizeResult({ connectionId, kind: conn.kind, result, today: todayDay });
         const stats = mergeScrape(db, { connectionId, displayName: conn.display_name, normalized, startDay });
         detectRecurring(db, todayDay);
+        detectFixedPayments(db, todayDay);
         db.run("UPDATE connections SET status = 'ok', status_detail = NULL, last_sync_at = ? WHERE id = ?", [new Date(this.#now()).toISOString(), connectionId]);
         vault.save();
         this.#results.set(connectionId, { at: new Date(this.#now()).toISOString(), ok: true, status: 'ok', stats });

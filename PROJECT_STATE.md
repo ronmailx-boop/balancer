@@ -26,6 +26,11 @@ After that the planned phases are complete; further work is by Ron's requests.
 
 - 2026-10-12: Ron asked to remove the autostart on opening Termux (the old version held the session, so typed commands went nowhere). install.sh now deletes the ~/.bashrc block. Start with `balancer`; `balancer auto` (update + start in background) stays available by hand.
 
+## Rolling credit (2026-10-12, Ron's request)
+- Cards with "אשראי מתגלגל": a fixed monthly payment leaves the bank, the rest rolls over. server/rolling.js: settings.card_fixed_payments {cardId: {amount, source auto|user}}; detection after each sync and on unlock from bank card_payment debits (provider words; with several cards of one company the debit must contain the card's last 4 digits) that stay about the same while the card bill was larger.
+- Upcoming charges, projection, the low-balance alert and the account card use the fixed amount; the bill sheet shows total / debit / rolled and a "שינוי" editor (amount, 0 = none, null = back to detection).
+- Unknown: whether Leumi's debit text includes the card digits. If not, Ron's two Cal cards are not detected and he sets them by hand.
+
 ## Launcher
 - The apps launcher (repo my-site, https://apps.vplusstudio.app/) has a balancer tile that opens http://127.0.0.1:8765/#/home (my-site PR #46, Ron confirmed it works). The tile's icon is a copy of app/icon-512.png kept in my-site (icons/balancer-512.png); if the icon changes, update it there too.
 
