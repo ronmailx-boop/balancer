@@ -87,3 +87,20 @@ test('recurring list shows the fixed payment for the rolling-credit line and cou
   assert.equal(roll.rollingBalance, -6747.05);
   assert.equal(r.totals.monthlyRecurring, 2171);
 });
+
+test('installment plans: finished ones move apart, paid-off ones can be hidden', async () => {
+  const db = await setup();
+  const ins = (id, desc, n, total) => db.run(`INSERT INTO transactions (id, account_id, date, processed_date, description, original_amount, charged_amount, type, installment_number, installment_total)
+    VALUES (?, 'cal1', '2026-09-01', '2026-10-10', ?, -1200, -100, 'installments', ?, ?)`, [id, desc, n, total]);
+  ins('i1', 'מקרר', 4, 12);
+  ins('i2', 'טלפון', 10, 10);
+  let r = Q.recurringAndInstallments(db, '2026-10-12');
+  assert.deepEqual(r.installments.map(i => i.description), ['מקרר']);
+  assert.deepEqual(r.installmentsDone.map(i => i.description), ['טלפון']);
+  assert.equal(r.totals.installmentsMonthly, 100);
+  Q.hideInstallment(db, r.installments[0].id, true);
+  r = Q.recurringAndInstallments(db, '2026-10-12');
+  assert.equal(r.installments.length, 0);
+  assert.equal(r.installmentsDone.find(i => i.description === 'מקרר').paidOff, true);
+  assert.equal(r.totals.installmentsMonthly, 0);
+});

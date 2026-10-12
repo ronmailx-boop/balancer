@@ -706,6 +706,25 @@ export function dismissRecurring(db, id, dismissed, today) {
   return true;
 }
 
+const planId = key => `ins-${hashText(key)}`;
+const hashText = t => { let h = 2166136261; for (const c of t) h = Math.imul(h ^ c.codePointAt(0), 16777619) >>> 0; return h.toString(36); };
+
+function installmentsHidden(db) {
+  try {
+    const v = JSON.parse(one(db, "SELECT value FROM settings WHERE key = 'installments_hidden'")?.value || '[]');
+    return Array.isArray(v) ? v : [];
+  } catch {
+    return [];
+  }
+}
+
+// "Paid off early": the plan leaves the active list and the monthly totals (or comes back)
+export function hideInstallment(db, id, hidden) {
+  const set = new Set(installmentsHidden(db));
+  if (hidden) set.add(id); else set.delete(id);
+  db.run("INSERT OR REPLACE INTO settings (key, value) VALUES ('installments_hidden', ?)", [JSON.stringify([...set].slice(-500))]);
+}
+
 export function recurringAndInstallments(db, today) {
   const fixed = fixedPayments(db);
   const recurring = all(db, `
@@ -727,16 +746,22 @@ export function recurringAndInstallments(db, today) {
     WHERE t.type = 'installments' AND t.installment_total IS NOT NULL ORDER BY ${EFF_DATE}`);
   const plans = new Map();
   for (const r of rows) plans.set(`${r.accountId}|${r.description}|${r.total}|${r.fullAmount}`, r);
-  const installments = [...plans.values()].map(p => ({
-    description: p.description, accountName: p.accountName, number: p.number, total: p.total,
+  const hidden = new Set(installmentsHidden(db));
+  const allPlans = [...plans.entries()].map(([key, p]) => ({
+    id: planId(key), description: p.description, accountName: p.accountName, number: p.number, total: p.total,
     payment: r2(p.payment), fullAmount: r2(p.fullAmount), remainingCount: p.total - p.number,
     remainingAmount: r2((p.total - p.number) * p.payment), lastDate: p.date,
   })).filter(p => p.remainingCount >= 0).sort((a, b) => b.remainingAmount - a.remainingAmount);
+  // Active plans; plans the user marked as paid off, and plans past their last payment, are listed apart
+  const installments = allPlans.filter(p => !hidden.has(p.id) && p.remainingCount > 0);
+  const installmentsDone = allPlans.filter(p => hidden.has(p.id) || p.remainingCount === 0)
+    .map(p => ({ ...p, paidOff: hidden.has(p.id) }));
   const monthlyFixed = recurring.filter(r => r.status === 'active' && r.amount < 0).reduce((s, r) => s - r.amount * (PER_MONTH[r.cadence] || 1), 0);
   const monthlyIncome = recurring.filter(r => r.status === 'active' && r.amount > 0).reduce((s, r) => s + r.amount * (PER_MONTH[r.cadence] || 1), 0);
   return {
     recurring: recurring.map(r => ({ ...r, amount: r2(r.amount) })).sort((a, b) => (a.status === b.status ? a.amount - b.amount : 0)),
     installments,
+    installmentsDone,
     totals: {
       monthlyRecurring: r2(monthlyFixed),
       monthlyRecurringIncome: r2(monthlyIncome),

@@ -472,6 +472,14 @@ export function createApp({ vault, appDir, port, idleMs = 5 * 60 * 1000, now = D
 
     'GET /api/recurring': async () => Q.recurringAndInstallments((await data()).db, todayIso()),
 
+    'POST /api/installments/hide': async ({ body }) => {
+      const { db, save } = await data();
+      if (typeof body.id !== 'string' || !/^ins-[a-z0-9]{1,16}$/.test(body.id)) throw new ApiError(400, 'bad_request');
+      Q.hideInstallment(db, body.id, Boolean(body.hidden));
+      save();
+      return Q.recurringAndInstallments(db, todayIso());
+    },
+
     'POST /api/recurring/dismiss': async ({ body }) => {
       const { db, save } = await data();
       if (typeof body.id !== 'string' || body.id.length > 80) throw new ApiError(400, 'bad_request');

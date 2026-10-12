@@ -38,18 +38,57 @@ export async function render(ctx) {
       h('ul', { class: 'list' }, income.map(row))),
     expenses.length > 0 && card(cardTitle('חיובים קבועים', h('span', { class: 'card-total' }, `${money(r.totals.monthlyRecurring)} בחודש`)),
       h('ul', { class: 'list' }, expenses.map(row))),
-    r.installments.length > 0 && card(cardTitle('עסקאות בתשלומים'),
-      h('ul', { class: 'list' }, r.installments.map(i => h('li', { class: 'list-row installment' },
-        h('span', { class: 'list-main' },
-          h('span', {}, i.description),
-          h('span', { class: 'muted small' }, `${i.accountName} · ${i.number} מתוך ${i.total} · ${money(i.payment)} לחודש`),
-          h('span', { class: 'mini-progress', role: 'img', 'aria-label': `שולמו ${i.number} מתוך ${i.total}` },
-            h('span', { style: { width: `${i.number / i.total * 100}%` } }))),
-        h('span', { class: 'list-amount' }, h('span', {}, money(i.remainingAmount)), h('span', { class: 'muted small' }, `נשארו ${i.remainingCount}`)))))),
+    r.installments.length > 0 && card(cardTitle('עסקאות בתשלומים', h('span', { class: 'card-total' }, `${money(r.totals.installmentsMonthly)} בחודש`)),
+      h('ul', { class: 'list' }, r.installments.map(i => installmentRow(ctx, i)))),
+    r.installmentsDone?.length > 0 && card(h('details', { class: 'section' },
+      h('summary', {}, `תשלומים שהסתיימו או נפרעו (${r.installmentsDone.length})`),
+      h('ul', { class: 'list' }, r.installmentsDone.map(i => installmentRow(ctx, i))))),
     inactive.length > 0 && card(h('details', { class: 'section' },
       h('summary', {}, `הופסקו או סומנו כלא קבועים (${inactive.length})`),
       h('ul', { class: 'list' }, inactive.map(row)))),
   ];
+}
+
+function installmentRow(ctx, i) {
+  return h('li', {},
+    h('button', { type: 'button', class: 'list-row list-button installment', onclick: () => openInstallment(ctx, i) },
+      h('span', { class: 'list-main' },
+        h('span', {}, i.description),
+        h('span', { class: 'muted small' }, `${i.accountName} · ${i.number} מתוך ${i.total} · ${money(i.payment)} לחודש`),
+        i.paidOff && h('span', { class: 'muted small' }, 'סומן כנפרע'),
+        h('span', { class: 'mini-progress', role: 'img', 'aria-label': `שולמו ${i.number} מתוך ${i.total}` },
+          h('span', { style: { width: `${i.paidOff ? 100 : i.number / i.total * 100}%` } }))),
+      h('span', { class: 'list-amount' }, h('span', {}, money(i.paidOff ? 0 : i.remainingAmount)), h('span', { class: 'muted small' }, `נשארו ${i.paidOff ? 0 : i.remainingCount}`))));
+}
+
+function openInstallment(ctx, i) {
+  const toggle = h('button', { type: 'button', class: i.paidOff ? 'btn' : 'btn danger' },
+    i.paidOff ? 'החזרה לתשלומים הפעילים' : 'פרעתי את כל הסכום (הסרה מהרשימה)');
+  const sheet = openSheet(i.description, h('div', {},
+    h('dl', { class: 'facts' },
+      h('dt', {}, 'עסקה מקורית'), h('dd', {}, money(i.fullAmount, { decimals: true })),
+      h('dt', {}, 'תשלום חודשי'), h('dd', {}, money(i.payment, { decimals: true })),
+      h('dt', {}, 'שולמו'), h('dd', {}, `${i.number} מתוך ${i.total}`),
+      h('dt', {}, 'נשאר לשלם'), h('dd', {}, i.paidOff ? 'נפרע' : `${money(i.remainingAmount, { decimals: true })} (${i.remainingCount} תשלומים)`),
+      h('dt', {}, 'כרטיס'), h('dd', {}, i.accountName),
+      h('dt', {}, 'תשלום אחרון שנקלט'), h('dd', {}, shortDate(i.lastDate))),
+    i.remainingCount > 0 && h('div', { class: 'stack' },
+      h('p', { class: 'muted small' }, i.paidOff
+        ? 'התשלומים האלה סומנו כנפרעו ולא נספרים בסיכומים.'
+        : 'אם פרעת את היתרה מראש, אפשר להסיר את העסקה מהתשלומים הפעילים ומהסיכום החודשי.'),
+      toggle)));
+  toggle.addEventListener('click', async () => {
+    toggle.disabled = true;
+    try {
+      await api('installments/hide', { method: 'POST', body: { id: i.id, hidden: !i.paidOff } });
+      sheet.close();
+      toast(i.paidOff ? 'הוחזר לתשלומים הפעילים' : 'סומן כנפרע');
+      ctx.refresh({ keepScroll: true });
+    } catch (err) {
+      toast(messageFor(err));
+      toggle.disabled = false;
+    }
+  });
 }
 
 const priceUp = x => x.amount < 0 && x.previousAmount && Math.abs(x.lastAmount) > Math.abs(x.previousAmount) * 1.05;
