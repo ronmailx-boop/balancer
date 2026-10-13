@@ -1,6 +1,6 @@
-// Automatic sync twice a day, when the app is opened: once from 07:00 and once from 19:00
-// (Israel time). Opening the app after 19:00 or before 07:00 the next morning belongs to the
-// evening slot. Each slot syncs at most once, even if that sync fails (account safety).
+// Automatic sync three times a day, when the app is opened: from 04:00, from 07:00 and from 19:00
+// (Israel time). Opening the app between midnight and 04:00 still belongs to the previous evening's
+// slot. Each slot syncs at most once, even if that sync fails (account safety).
 const fmt = new Intl.DateTimeFormat('en-CA', {
   timeZone: 'Asia/Jerusalem', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hourCycle: 'h23',
 });
@@ -10,6 +10,7 @@ function israelParts(ms) {
   return { date: `${p.year}-${p.month}-${p.day}`, hour: Number(p.hour) };
 }
 
+export const EARLY_HOUR = 4;
 export const MORNING_HOUR = 7;
 export const EVENING_HOUR = 19;
 
@@ -17,6 +18,7 @@ export function slotKey(ms) {
   const { date, hour } = israelParts(ms);
   if (hour >= EVENING_HOUR) return `${date} evening`;
   if (hour >= MORNING_HOUR) return `${date} morning`;
+  if (hour >= EARLY_HOUR) return `${date} early`;
   return `${israelParts(ms - 12 * 3600 * 1000).date} evening`; // after midnight: still last night's slot
 }
 

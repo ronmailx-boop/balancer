@@ -6,8 +6,10 @@ import { slotKey, takeAutoSyncSlot } from '../server/autosync.js';
 // Israel is UTC+3 in October (summer time)
 const il = (date, hh) => Date.parse(`${date}T${String(hh).padStart(2, '0')}:30:00+03:00`);
 
-test('slots: 07:00 morning, 19:00 evening, after midnight still last evening', () => {
-  assert.equal(slotKey(il('2026-10-10', 6)), '2026-10-09 evening');
+test('slots: 04:00 early, 07:00 morning, 19:00 evening, after midnight still last evening', () => {
+  assert.equal(slotKey(il('2026-10-10', 3)), '2026-10-09 evening');
+  assert.equal(slotKey(il('2026-10-10', 4)), '2026-10-10 early');
+  assert.equal(slotKey(il('2026-10-10', 6)), '2026-10-10 early');
   assert.equal(slotKey(il('2026-10-10', 7)), '2026-10-10 morning');
   assert.equal(slotKey(il('2026-10-10', 18)), '2026-10-10 morning');
   assert.equal(slotKey(il('2026-10-10', 19)), '2026-10-10 evening');

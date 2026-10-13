@@ -12,7 +12,7 @@ No open tasks; next work comes from Ron's requests.
 - Always hide "HeadlessChrome" in the User-Agent (the library does it; Cal's WAF rejects it).
 
 ## Auto sync (2026-10-10, Ron's request)
-- Twice a day when the app is opened: a 07:00 slot and a 19:00 slot (Israel time; 00:00-06:59 belongs to the previous evening). server/autosync.js; triggered from GET /api/overview (home screen), only when unlocked and not in demo.
+- Three times a day when the app is opened: 04:00, 07:00 and 19:00 slots (Israel time; 00:00-03:59 belongs to the previous evening). The 04:00 slot was added 2026-10-13 at Ron's request. server/autosync.js; triggered from GET /api/overview (home screen), only when unlocked and not in demo.
 - Each slot runs at most once even if it fails (settings.auto_sync_slot); connections synced by hand in the slot, or needing attention, are skipped. Toggle: Settings -> סנכרון אוטומטי (settings.auto_sync, default on).
 
 ## Keeping the server up (2026-10-12)

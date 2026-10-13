@@ -197,7 +197,7 @@ export async function render(ctx) {
       prefs.bankAccounts.length > 0 && h('button', { type: 'button', class: 'btn', onclick: () => openBalancePicker(() => ctx.refresh({ keepScroll: true })) }, 'בחירת חשבונות')),
     card(cardTitle('סנכרון אוטומטי'),
       h('label', { class: 'switch-row', for: 'auto-sync' },
-        h('span', {}, h('span', {}, 'פעמיים ביום, בפתיחת האפליקציה'), h('span', { class: 'muted small' }, 'פעם אחת מ-7:00 בבוקר ופעם אחת מ-19:00 בערב. אם כבר סנכרנת ידנית באותו חלון זמן, לא יסונכרן שוב.')),
+        h('span', {}, h('span', {}, 'שלוש פעמים ביום, בפתיחת האפליקציה'), h('span', { class: 'muted small' }, 'מ-4:00, מ-7:00 ומ-19:00. אם כבר סנכרנת ידנית באותו חלון זמן, לא יסונכרן שוב.')),
         auto)),
     card(cardTitle('מצב הדגמה'),
       h('label', { class: 'switch-row', for: 'demo-toggle' },
