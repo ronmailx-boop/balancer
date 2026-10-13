@@ -33,11 +33,13 @@ export async function render(ctx) {
 
   return [
     h('section', { class: 'hero' },
-      h('p', { class: 'hero-label' }, o.balances.total < 0 ? 'יתרה בעו"ש · יתרת חובה' : 'יתרה בעו"ש'),
+      included.length > 0
+        ? h('button', { type: 'button', class: 'hero-label hero-open', onclick: () => openActivity(ctx, included[0].id), 'aria-label': 'תנועות העו"ש בחודש הזה' },
+          o.balances.total < 0 ? 'יתרה בעו"ש · יתרת חובה' : 'יתרה בעו"ש', h('span', { class: 'stat-more', 'aria-hidden': 'true' }, ' ‹'))
+        : h('p', { class: 'hero-label' }, o.balances.total < 0 ? 'יתרה בעו"ש · יתרת חובה' : 'יתרה בעו"ש'),
       h('p', { class: `hero-value ${o.balances.total < 0 ? 'overdrawn' : ''}` }, money(o.balances.total, { sign: o.balances.total < 0 })),
       h('p', { class: 'hero-sub' }, updatedLabel(o.balances.accounts)),
       h('div', { class: 'hero-actions' },
-        included.length > 0 && h('button', { type: 'button', class: 'hero-link', onclick: () => openActivity(ctx, included[0].id) }, '📄 פעולות אחרונות'),
         bankCount > 1 && h('button', { type: 'button', class: 'hero-link', onclick: () => openBalancePicker(() => ctx.refresh({ keepScroll: true })) },
           o.balances.partial ? `לפי ${included.length} מתוך ${bankCount} חשבונות · שינוי` : `כל ${bankCount} החשבונות · בחירה`))),
 
@@ -159,12 +161,9 @@ function updatedLabel(accounts) {
   return `עודכן ${date} בשעה ${time}`;
 }
 
-// The latest movements of one account: the last 45 days, newest first
+// One account's movements in the budget month shown on screen
 function openActivity(ctx, accountId) {
-  const d = new Date();
-  d.setDate(d.getDate() - 45);
-  const from = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  ctx.navigate('transactions', { account: accountId, from });
+  ctx.navigate('transactions', { account: accountId });
 }
 
 export function stat(label, value, cls = '', onclick) {
