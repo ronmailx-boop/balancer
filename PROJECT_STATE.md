@@ -111,3 +111,5 @@ No open tasks; next work comes from Ron's requests.
 1. Output of scripts/spike/diagnose.sh
 2. Does Phase 1 run on the phone (install.sh + start.sh)?
 3. (Optional) scrypt timings from phase0-results.txt
+
+- [x] כרטיס היתרה בבית: הכפתור "פעולות אחרונות" הוסר. חץ ‹ ליד "יתרה בעו"ש" (וגם כרטיסי החשבונות) פותח את תנועות החשבון בחודש התקציב שנבחר בלבד (גרסה 1.60).
