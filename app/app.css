@@ -454,3 +454,5 @@ button.stat:active { filter: brightness(1.15); }
 .charge-detail .flow-calc { margin-bottom: 4px; }
 .version-line { font-weight: 700; margin-bottom: 0; }
 .card-total { font-weight: 700; font-size: 0.95rem; }
+.hero-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+button.account-card { font: inherit; color: inherit; text-align: start; cursor: pointer; }

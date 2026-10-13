@@ -36,8 +36,10 @@ export async function render(ctx) {
       h('p', { class: 'hero-label' }, o.balances.total < 0 ? 'יתרה בעו"ש · יתרת חובה' : 'יתרה בעו"ש'),
       h('p', { class: `hero-value ${o.balances.total < 0 ? 'overdrawn' : ''}` }, money(o.balances.total, { sign: o.balances.total < 0 })),
       h('p', { class: 'hero-sub' }, updatedLabel(o.balances.accounts)),
-      bankCount > 1 && h('button', { type: 'button', class: 'hero-link', onclick: () => openBalancePicker(() => ctx.refresh({ keepScroll: true })) },
-        o.balances.partial ? `לפי ${included.length} מתוך ${bankCount} חשבונות · שינוי` : `כל ${bankCount} החשבונות · בחירה`)),
+      h('div', { class: 'hero-actions' },
+        included.length > 0 && h('button', { type: 'button', class: 'hero-link', onclick: () => openActivity(ctx, included[0].id) }, '📄 פעולות אחרונות'),
+        bankCount > 1 && h('button', { type: 'button', class: 'hero-link', onclick: () => openBalancePicker(() => ctx.refresh({ keepScroll: true })) },
+          o.balances.partial ? `לפי ${included.length} מתוך ${bankCount} חשבונות · שינוי` : `כל ${bankCount} החשבונות · בחירה`))),
 
     card(cardTitle(monthLabel(o.month), range && h('span', { class: 'muted small' }, range)),
       h('div', { class: 'stats' },
@@ -74,7 +76,7 @@ export async function render(ctx) {
           h('span', { class: 'list-chevron', 'aria-hidden': 'true' }, '‹')))))),
 
     card(cardTitle('החשבונות שלי', h('button', { class: 'link', type: 'button', onclick: () => ctx.navigate('accounts') }, 'ניהול')),
-      h('div', { class: 'account-strip' }, o.balances.accounts.map(a => h('div', { class: `account-card ${a.type}` },
+      h('div', { class: 'account-strip' }, o.balances.accounts.map(a => h('button', { type: 'button', class: `account-card ${a.type}`, onclick: () => openActivity(ctx, a.id), 'aria-label': `${a.name}: פעולות אחרונות` },
         h('span', { class: 'account-name' }, a.name),
         h('span', { class: 'account-num' }, `••${a.masked}`),
         h('span', { class: `account-balance ${a.type !== 'card' && a.balance < 0 ? 'neg' : ''}` }, a.type === 'card' ? money(a.nextDebit ?? -a.balance) : money(a.balance, { sign: a.balance < 0 })),
@@ -155,6 +157,14 @@ function updatedLabel(accounts) {
   const date = d.toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' });
   const time = d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
   return `עודכן ${date} בשעה ${time}`;
+}
+
+// The latest movements of one account: the last 45 days, newest first
+function openActivity(ctx, accountId) {
+  const d = new Date();
+  d.setDate(d.getDate() - 45);
+  const from = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  ctx.navigate('transactions', { account: accountId, from });
 }
 
 export function stat(label, value, cls = '', onclick) {
