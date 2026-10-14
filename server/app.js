@@ -132,7 +132,7 @@ export function createApp({ vault, appDir, port, idleMs = 5 * 60 * 1000, now = D
     if (ids === null) return false;
     vault.save();
     if (!ids.length) return false;
-    const { queued } = sync.request(ids);
+    const { queued } = sync.request(ids, { auto: true });
     if (queued.length) log('info', `auto sync started (${queued.length} connections)`);
     return queued.length > 0;
   };
@@ -279,7 +279,8 @@ export function createApp({ vault, appDir, port, idleMs = 5 * 60 * 1000, now = D
     'GET /api/overview': async ({ url }) => {
       const autoSync = maybeAutoSync();
       const { db, demo: isDemo } = await data();
-      return { demo: isDemo, autoSync, today: todayIso(), range: Q.monthRange(db), ...Q.overview(db, { month: monthParam(url, db), today: todayIso() }) };
+      const st = sync.status();
+      return { demo: isDemo, autoSync, syncing: Boolean(st.running || st.queued.length), today: todayIso(), range: Q.monthRange(db), ...Q.overview(db, { month: monthParam(url, db), today: todayIso() }) };
     },
 
     'GET /api/month/flow': async ({ url }) => {

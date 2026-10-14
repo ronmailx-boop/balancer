@@ -215,3 +215,22 @@ test('auto-lock waits for a running sync (screen off mid-sync)', async t => {
   await s.req('GET', '/api/status');
   assert.equal(s.vault.unlocked, false, 'locks once the sync is over and the idle time passed');
 });
+
+test('sync status reports the current batch for the sync bar', async t => {
+  const s = await start(async job => (job.provider === 'max' ? maxFirst : { success: false, errorType: 'INVALID_PASSWORD' }), { minIntervalMs: 0 });
+  t.after(s.close);
+  assert.equal((await s.api('GET', '/api/sync/status')).json.batch, null);
+  const a = (await s.api('POST', '/api/connections', { provider: 'max', credentials: FAKE })).json.id;
+  const b = (await s.api('POST', '/api/connections', { provider: 'leumi', credentials: FAKE })).json.id;
+  await s.api('POST', '/api/sync', { all: true });
+  const done = await s.waitIdle();
+  assert.deepEqual([...done.batch.ids].sort(), [a, b].sort());
+  assert.equal(done.batch.auto, false);
+  assert.equal(done.results[a].ok, true);
+  assert.equal(done.results[b].status, 'needs_attention');
+  // A new run starts a new batch
+  await s.api('POST', '/api/sync', { id: a });
+  assert.deepEqual((await s.waitIdle()).batch.ids, [a]);
+  const o = (await s.api('GET', '/api/overview')).json;
+  assert.equal(o.syncing, false);
+});

@@ -73,6 +73,7 @@ export class SyncManager {
   #running = null; // { connectionId, stage, startedAt }
   #lastAttempt = new Map();
   #results = new Map(); // connectionId -> { at, ok, status, stats }
+  #batch = null; // the connections of the current (or last) run: { ids, auto, startedAt }
 
   constructor({ vault, profilesDir, runner = forkRunner, now = Date.now, minIntervalMs = MIN_INTERVAL_MS }) {
     this.#vault = vault;
@@ -87,12 +88,14 @@ export class SyncManager {
       running: this.#running ? { ...this.#running } : null,
       queued: [...this.#queue],
       results: Object.fromEntries(this.#results),
+      batch: this.#batch ? { ...this.#batch, ids: [...this.#batch.ids] } : null,
     };
   }
 
   // Returns which connections were queued and why others were skipped
-  request(ids) {
+  request(ids, { auto = false } = {}) {
     const db = this.#vault.db;
+    const fresh = !this.#running && !this.#queue.length;
     const queued = [];
     const skipped = [];
     for (const id of ids) {
@@ -107,6 +110,11 @@ export class SyncManager {
       }
       this.#queue.push(id);
       queued.push(id);
+    }
+    if (queued.length) {
+      // A new run starts a new batch; requests during a run join it
+      if (fresh || !this.#batch) this.#batch = { ids: [], auto, startedAt: new Date(this.#now()).toISOString() };
+      this.#batch.ids.push(...queued);
     }
     if (queued.length && !this.#running) this.#drain();
     return { queued, skipped };
@@ -126,6 +134,7 @@ export class SyncManager {
   reset() {
     this.#queue = [];
     this.#results.clear();
+    this.#batch = null;
   }
 
   async #drain() {

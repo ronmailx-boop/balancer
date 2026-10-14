@@ -11,10 +11,7 @@ export const usesMonth = true;
 export async function render(ctx) {
   const o = await api(`overview?month=${ctx.month}`);
   ctx.setDemo(o.demo);
-  if (o.autoSync) {
-    toast('סנכרון אוטומטי התחיל ברקע');
-    ctx.watchSync();
-  }
+  if (o.autoSync || o.syncing) ctx.watchSync();
   if (!o.hasData) {
     return emptyState('🏦', 'אין עדיין נתונים',
       'מחברים את הבנק וכרטיסי האשראי, או מסתכלים קודם איך זה נראה עם נתונים לדוגמה.',

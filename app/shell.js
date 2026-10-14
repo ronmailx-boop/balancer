@@ -2,6 +2,7 @@
 // month swipe and pull-to-refresh.
 import { h, monthLabel, shiftMonth, skeleton, errorState, toast, cycleMonth, cycleRange, todayLocal } from './ui.js';
 import { api, messageFor } from './api.js';
+import { createSyncBar } from './syncbar.js';
 import * as home from './views/home.js';
 import * as month from './views/month.js';
 import * as transactions from './views/transactions.js';
@@ -40,13 +41,20 @@ export function startShell({ root, onLocked, lock }) {
   const picker = h('div', { class: 'month-picker' }, prevBtn, monthText, nextBtn);
   const banner = h('div', { class: 'demo-banner', role: 'status', hidden: true }, '🧪 מצב הדגמה: נתונים לדוגמה בלבד');
   const pull = h('div', { class: 'pull', 'aria-hidden': 'true' }, '↻');
+  const syncBar = createSyncBar({
+    navigate: route => navigate(route),
+    onDone: async ok => {
+      await render({ keepScroll: true });
+      if (ok) document.querySelector('.hero-value')?.classList.add('flash');
+    },
+  });
   const main = h('main', { class: 'content', id: 'content', tabindex: '-1' });
   const nav = h('nav', { class: 'bottom-nav', 'aria-label': 'ניווט ראשי' }, NAV.map(([route, icon, label]) =>
     h('button', { type: 'button', dataset: { route }, onclick: () => navigate(route) }, h('span', { class: 'nav-icon', 'aria-hidden': 'true' }, icon), h('span', {}, label))));
 
   root.replaceChildren(
     h('header', { class: 'topbar' }, h('div', { class: 'topbar-row' }, backBtn, title, picker)),
-    banner, pull, main, nav);
+    banner, syncBar.el, pull, main, nav);
   root.hidden = false;
 
   function parseHash() {
@@ -155,7 +163,6 @@ export function startShell({ root, onLocked, lock }) {
   });
 
   // Pull-to-refresh: syncs all connections (real data), then reloads the screen when done
-  let syncWatch = null;
   async function pullRefresh() {
     if (demo) return render({ keepScroll: true });
     try {
@@ -164,28 +171,15 @@ export function startShell({ root, onLocked, lock }) {
         toast(r.skipped.some(s => s.reason === 'too_soon') ? 'הנתונים עדכניים (סונכרנו לאחרונה)' : 'אין חשבונות לסנכרון');
         return render({ keepScroll: true });
       }
-      toast('מסנכרן… זה יכול לקחת כמה דקות');
       watchSync();
     } catch (err) {
       toast(messageFor(err));
     }
   }
 
-  // Polls the sync status and refreshes the screen when it is done
+  // Shows the sync bar until the sync is done, then refreshes the screen
   function watchSync() {
-    clearInterval(syncWatch);
-    syncWatch = setInterval(async () => {
-      try {
-        const s = await api('sync/status');
-        if (s.running || s.queued.length) return;
-        clearInterval(syncWatch);
-        const failed = Object.values(s.results).filter(x => !x.ok).length;
-        toast(failed ? 'הסנכרון הסתיים עם שגיאות. פרטים במסך החשבונות.' : 'הסנכרון הסתיים');
-        render({ keepScroll: true });
-      } catch {
-        clearInterval(syncWatch);
-      }
-    }, 3000);
+    syncBar.watch();
   }
 
   window.addEventListener('popstate', () => render());
