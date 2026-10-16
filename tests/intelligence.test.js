@@ -114,7 +114,22 @@ test('insights are short and well formed', async () => {
   for (const month of ['2026-10', '2026-09']) {
     const list = Q.insights(db, { month, today: TODAY });
     assert.ok(Array.isArray(list) && list.length <= 4);
-    for (const i of list) assert.ok(i.text && i.icon && i.level);
+    for (const i of list) {
+      assert.ok(i.text && i.icon && i.level);
+      assert.ok(i.explain, 'every insight explains its numbers');
+      const e = i.explain;
+      if (e.kind === 'pace') {
+        assert.ok(Math.abs(e.projected - e.variableNow / e.elapsedDays * e.spanDays) < 1);
+        assert.ok(Math.abs(e.diff - (e.projected - e.average)) < 0.02);
+        const sum = e.categories.reduce((x, c) => x + c.amount, 0);
+        assert.ok(Math.abs(sum - e.variableNow) < 0.02, 'the categories add up to the total');
+      }
+      if (e.kind === 'category' || e.kind === 'pace') {
+        const avg = e.months.reduce((x, m) => x + m.amount, 0) / e.months.length;
+        if (e.kind === 'pace') assert.ok(Math.abs(avg - e.average) < 0.02, 'the average is the average of the listed months');
+      }
+      if (e.kind === 'recurring') assert.ok(Math.abs(e.recurring + e.installments - e.total) < 0.02);
+    }
   }
 });
 

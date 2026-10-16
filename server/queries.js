@@ -246,32 +246,47 @@ export function insights(db, { month, today }) {
   const day = cycleDay(db);
   const [from, to] = bounds(db, month);
   const prevMonths = [1, 2, 3].map(i => shiftMonth(month, -i));
-  const history = prevMonths.map(m => categoryBreakdown(db, m)).filter(list => list.length > 0);
+  const hist = prevMonths.map(m => ({ month: m, list: categoryBreakdown(db, m) })).filter(x => x.list.length > 0);
+  const history = hist.map(x => x.list);
   if (!history.length) return [];
   const avgBy = {};
   for (const list of history) for (const c of list) avgBy[c.id] = (avgBy[c.id] || 0) + c.amount / history.length;
   const current = categoryBreakdown(db, month);
   const isCurrent = cycleMonth(today, day) === month;
   const out = [];
+  const variableOf = list => r2(list.filter(c => !c.fixed).reduce((s, c) => s + c.amount, 0));
+  // How a category compares with the months before (for the "how was this calculated" sheet)
+  const categoryExplain = (c, kind) => ({
+    kind, month, category: { id: c.id, name: c.name, icon: c.icon }, amount: c.amount, average: r2(avgBy[c.id]),
+    months: hist.map(x => ({ month: x.month, amount: x.list.find(y => y.id === c.id)?.amount || 0 })),
+  });
 
   if (isCurrent) {
     const span = (Date.parse(to) - Date.parse(from)) / 86400000;
     const elapsed = Math.min(span, (Date.parse(today) - Date.parse(from)) / 86400000 + 1);
     const share = elapsed / span;
     if (share >= 0.2 && share < 1) {
-      const variableNow = current.filter(c => !c.fixed).reduce((s, c) => s + c.amount, 0);
-      const variableAvg = history.reduce((s, list) => s + list.filter(c => !c.fixed).reduce((x, c) => x + c.amount, 0), 0) / history.length;
+      const variableNow = variableOf(current);
+      const variableAvg = history.reduce((s, list) => s + variableOf(list), 0) / history.length;
       const projected = variableNow / share;
       const diff = projected - variableAvg;
       if (variableAvg > 0 && Math.abs(diff) > variableAvg * 0.1 && Math.abs(diff) >= 200) {
         out.push({ icon: diff > 0 ? '📈' : '📉', level: diff > 0 ? 'warning' : 'good',
-          text: `בקצב הנוכחי ההוצאות המשתנות יגיעו החודש לכ-${fmt(projected)}, ${fmt(Math.abs(diff))} ${diff > 0 ? 'יותר' : 'פחות'} מהממוצע.` });
+          text: `בקצב הנוכחי ההוצאות המשתנות יגיעו החודש לכ-${fmt(projected)}, ${fmt(Math.abs(diff))} ${diff > 0 ? 'יותר' : 'פחות'} מהממוצע.`,
+          explain: {
+            kind: 'pace', month, from, to, today, elapsedDays: Math.round(elapsed), spanDays: Math.round(span),
+            variableNow, projected: r2(projected), average: r2(variableAvg), diff: r2(diff),
+            months: hist.map(x => ({ month: x.month, amount: variableOf(x.list) })),
+            categories: current.filter(c => !c.fixed).map(c => ({ id: c.id, name: c.name, icon: c.icon, amount: c.amount, average: r2(avgBy[c.id] || 0) })),
+            fixedExcluded: current.filter(c => c.fixed).map(c => ({ name: c.name, icon: c.icon, amount: c.amount })),
+          } });
       }
     }
     for (const c of current.filter(x => !x.fixed && avgBy[x.id] > 0 && x.amount > avgBy[x.id] && x.amount - avgBy[x.id] >= 150)
       .sort((a, b) => (b.amount - avgBy[b.id]) - (a.amount - avgBy[a.id])).slice(0, 2)) {
       out.push({ icon: c.icon || '❔', level: 'warning', categoryId: c.id,
-        text: `על ${c.name} הוצאת כבר ${fmt(c.amount)}, יותר מכל החודש בממוצע (${fmt(avgBy[c.id])}).` });
+        text: `על ${c.name} הוצאת כבר ${fmt(c.amount)}, יותר מכל החודש בממוצע (${fmt(avgBy[c.id])}).`,
+        explain: categoryExplain(c, 'category') });
     }
   } else {
     const changes = current.filter(c => avgBy[c.id] > 0).map(c => ({ c, diff: c.amount - avgBy[c.id] }))
@@ -279,7 +294,8 @@ export function insights(db, { month, today }) {
       .sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff)).slice(0, 3);
     for (const { c, diff } of changes) {
       out.push({ icon: c.icon || '❔', level: diff > 0 ? 'warning' : 'good', categoryId: c.id,
-        text: `${c.name}: ${fmt(c.amount)}, ${fmt(Math.abs(diff))} ${diff > 0 ? 'יותר' : 'פחות'} מהממוצע של 3 החודשים שלפני.` });
+        text: `${c.name}: ${fmt(c.amount)}, ${fmt(Math.abs(diff))} ${diff > 0 ? 'יותר' : 'פחות'} מהממוצע של 3 החודשים שלפני.`,
+        explain: categoryExplain(c, 'category') });
     }
   }
   // Same numbers as the recurring screen: rolling credit counts as its fixed payment, plus installments
@@ -288,6 +304,7 @@ export function insights(db, { month, today }) {
   const total = r2(rec.totals.monthlyRecurring + rec.totals.installmentsMonthly);
   if (fixedCount + rec.installments.length >= 3) {
     out.push({ icon: '🔁', level: 'info', link: 'recurring',
+      explain: { kind: 'recurring', count: fixedCount, recurring: rec.totals.monthlyRecurring, installmentsCount: rec.installments.length, installments: rec.totals.installmentsMonthly, total },
       text: `${fixedCount} חיובים קבועים${rec.installments.length ? ` ו-${rec.installments.length} עסקאות בתשלומים` : ''} בסך ${fmt(total)} בחודש.` });
   }
   return out.slice(0, 4);

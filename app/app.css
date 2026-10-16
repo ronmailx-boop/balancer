@@ -436,8 +436,10 @@ form .pair > div { display: flex; flex-direction: column; gap: 6px; min-width: 0
 
 /* Insights */
 .insights { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
-.insight { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2); }
+.insight { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 10px 12px; border-radius: 12px; background: var(--surface-2);
+  width: 100%; border: none; font: inherit; color: inherit; text-align: start; cursor: pointer; }
 .insight > span:nth-child(2) { flex: 1; }
+.insight-more { flex-basis: 100%; text-align: end; font-size: 0.85rem; font-weight: 700; color: var(--primary); }
 .insight-icon { font-size: 1.2rem; }
 .card > .btn + .btn, .card > .btn + details { margin-top: 10px; }
 
@@ -523,3 +525,25 @@ button.account-card { font: inherit; color: inherit; text-align: start; cursor: 
   .syncbar, .syncbar *, .hero-value.flash { animation: none !important; }
   .syncbar-run { width: 100%; opacity: 0.6; }
 }
+
+/* How an insight was calculated */
+.calc { display: flex; flex-direction: column; gap: 14px; }
+.calc p { margin: 0; }
+.calc-lead { padding: 12px 14px; border-radius: 14px; background: linear-gradient(135deg, rgba(115, 103, 240, 0.14), rgba(144, 85, 255, 0.08)), var(--card); border: 1px solid var(--border); font-weight: 500; }
+.calc-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.calc-step { display: flex; gap: 12px; }
+.calc-num { width: 28px; height: 28px; flex-shrink: 0; border-radius: 14px; background: var(--gradient); color: #fff; font-weight: 800; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; }
+.calc-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.calc-formula { text-align: right; padding: 8px 10px; border-radius: 10px; background: var(--surface-2); font-variant-numeric: tabular-nums; line-height: 1.6; }
+.calc-formula b { color: var(--primary); }
+.calc-months { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.calc-months li { display: flex; justify-content: space-between; gap: 10px; font-size: 0.9rem; }
+.calc-result { font-weight: 700; }
+.calc-result.up { color: var(--text-critical); }
+.calc-result.down { color: var(--text-good); }
+.calc-note { padding: 12px 14px; border-radius: 14px; background: var(--surface-2); display: flex; flex-direction: column; gap: 6px; }
+.calc-h { margin: 0 0 8px; font-size: 1rem; }
+.calc-cats { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.calc-cats li { display: flex; align-items: center; gap: 10px; }
+.calc-cat-name { flex: 1; min-width: 0; }
+.calc-cat-amounts { display: flex; flex-direction: column; align-items: flex-end; }

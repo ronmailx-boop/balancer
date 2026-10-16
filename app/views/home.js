@@ -4,6 +4,7 @@ import { openBalancePicker } from './prefs.js';
 import { openFlow } from './flow.js';
 import { txRow, openDetail } from './transactions.js';
 import { rankedBars } from '../charts.js';
+import { openInsight } from './insight.js';
 
 export const title = 'בית';
 export const usesMonth = true;
@@ -59,10 +60,11 @@ export async function render(ctx) {
         a.categoryId && h('button', { class: 'link', type: 'button', onclick: () => ctx.navigate('transactions', { category: a.categoryId }) }, 'פירוט'))))),
 
     o.insights?.length > 0 && card(cardTitle('תובנות'),
-      h('ul', { class: 'insights' }, o.insights.map(i => h('li', { class: `insight ${i.level}` },
-        h('span', { class: 'insight-icon', 'aria-hidden': 'true' }, i.icon),
-        h('span', {}, i.text),
-        (i.categoryId || i.link) && h('button', { class: 'link', type: 'button', onclick: () => (i.link ? ctx.navigate(i.link) : ctx.navigate('transactions', { category: i.categoryId })) }, 'פירוט'))))),
+      h('ul', { class: 'insights' }, o.insights.map(i => h('li', {},
+        h('button', { type: 'button', class: `insight ${i.level}`, onclick: () => (i.explain ? openInsight(ctx, i) : i.link ? ctx.navigate(i.link) : ctx.navigate('transactions', { category: i.categoryId })) },
+          h('span', { class: 'insight-icon', 'aria-hidden': 'true' }, i.icon),
+          h('span', {}, i.text),
+          h('span', { class: 'insight-more' }, 'איך חושב ‹')))))),
 
     o.upcomingCharges.length > 0 && card(cardTitle('חיובי אשראי קרובים'),
       h('ul', { class: 'list' }, o.upcomingCharges.map(c => h('li', {},
